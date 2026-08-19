@@ -1,0 +1,88 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  CLIENT @map("client")
+  ADMIN  @map("admin")
+}
+
+enum TrackingStatusStep {
+  recoleccion
+  centro_distribucion
+  en_transito
+  en_reparto
+  entregado
+  incidencia
+}
+
+enum ServiceType {
+  EXPRESS      @map("Express")
+  CARGA_PESADA @map("Carga Pesada")
+  CONSOLIDADO  @map("Consolidado")
+  ULTIMA_MILLA @map("Última Milla")
+}
+
+enum VehicleCategory {
+  VANS_EXPRESS         @map("Vans Express")
+  CAMIONES_MEDIANOS    @map("Camiones Medianos")
+  TRAILERS_GRAN_CARGA  @map("Trailers de Gran Carga")
+  REFRIGERADOS         @map("Refrigerados")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  phone     String?
+  suiteCode String?
+  role      Role     @default(CLIENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Shipment {
+  trackingCode      String             @id
+  senderName        String
+  senderCity        String
+  recipientName     String
+  recipientCity     String
+  recipientAddress  String
+  serviceType       ServiceType
+  weightKg          Float
+  dimensions        String
+  estimatedDelivery String
+  currentStatus     TrackingStatusStep @default(recoleccion)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  events TrackingEvent[]
+}
+
+model TrackingEvent {
+  id          String             @id @default(uuid())
+  shipmentId  String
+  shipment    Shipment           @relation(fields: [shipmentId], references: [trackingCode], onDelete: Cascade)
+  timestamp   DateTime           @default(now())
+  location    String
+  status      TrackingStatusStep
+  title       String
+  description String
+}
+
+model FleetVehicle {
+  id        String          @id @default(uuid())
+  name      String
+  category  VehicleCategory
+  capacity  String
+  volume    String
+  features  String[]
+  imageUrl  String?
+  active    Boolean         @default(true)
+}
