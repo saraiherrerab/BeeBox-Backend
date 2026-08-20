@@ -1,9 +1,23 @@
 import prisma from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { Role } from '@prisma/client';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'beebox_super_secret_jwt_key';
+
+export function validatePassword(password: string): void {
+  if (!password || password.length < 8) {
+    throw new Error('La contraseña debe tener al menos 8 caracteres.');
+  }
+  if (!/[a-zA-Z]/.test(password)) {
+    throw new Error('La contraseña debe contener al menos una letra.');
+  }
+  if (!/\d/.test(password)) {
+    throw new Error('La contraseña debe contener al menos un número.');
+  }
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    throw new Error('La contraseña debe contener al menos un carácter especial (ej. !@#$%^&*).');
+  }
+}
 
 export class AuthService {
   async register(data: {
@@ -12,6 +26,8 @@ export class AuthService {
     password: string;
     phone?: string;
   }) {
+    validatePassword(data.password);
+
     const existingUser = await prisma.user.findUnique({
       where: { email: data.email },
     });
@@ -30,7 +46,7 @@ export class AuthService {
         password: hashedPassword,
         phone: data.phone || null,
         suiteCode,
-        role: Role.CLIENT,
+        role: 'CLIENT',
       },
     });
 
@@ -67,7 +83,7 @@ export class AuthService {
       throw new Error('Credenciales inválidas.');
     }
 
-    const roleString = user.role === Role.ADMIN ? 'admin' : 'client';
+    const roleString = (user.role && user.role.toUpperCase() === 'ADMIN') ? 'admin' : 'client';
 
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: roleString },
@@ -95,7 +111,7 @@ export class AuthService {
 
     if (!user) return null;
 
-    const roleString = user.role === Role.ADMIN ? 'admin' : 'client';
+    const roleString = (user.role && user.role.toUpperCase() === 'ADMIN') ? 'admin' : 'client';
 
     return {
       id: user.id,

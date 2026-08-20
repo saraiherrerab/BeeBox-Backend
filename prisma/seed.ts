@@ -6,9 +6,9 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Iniciando la siembra de datos de prueba (Usuarios, Envíos y Flota)...');
 
-  // Seed Users
-  const adminPasswordHash = await bcrypt.hash('admin123', 10);
-  const clientPasswordHash = await bcrypt.hash('cliente123', 10);
+  // Seed Users con contraseñas seguras (letra, número, especial, >= 8 chars)
+  const adminPasswordHash = await bcrypt.hash('Admin123!', 10);
+  const clientPasswordHash = await bcrypt.hash('Cliente123!', 10);
 
   const admin = await prisma.user.upsert({
     where: { email: 'admin@beebox.com' },
@@ -107,7 +107,12 @@ async function main() {
     });
 
     if (!existing) {
-      const created = await prisma.fleetVehicle.create({ data: v });
+      const created = await prisma.fleetVehicle.create({
+        data: {
+          ...v,
+          features: JSON.stringify(v.features),
+        },
+      });
       console.log(`🚛 Vehículo creado: ${created.name}`);
     }
   }

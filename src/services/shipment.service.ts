@@ -1,5 +1,5 @@
 import prisma from '../config/db.js';
-import { TrackingStatusStep, ServiceType, TrackingEvent } from '@prisma/client';
+import { TrackingEvent } from '@prisma/client';
 
 export class ShipmentService {
   async getByTrackingCode(trackingCode: string) {
@@ -56,7 +56,7 @@ export class ShipmentService {
     recipientName: string;
     recipientCity: string;
     recipientAddress: string;
-    serviceType: ServiceType;
+    serviceType: string;
     weightKg: number;
     dimensions: string;
     estimatedDelivery: string;
@@ -68,7 +68,7 @@ export class ShipmentService {
           create: [
             {
               location: data.senderCity,
-              status: TrackingStatusStep.recoleccion,
+              status: 'recoleccion',
               title: 'Orden Creada',
               description: 'El envío ha sido ingresado en el sistema BeeBox.',
             },
@@ -83,7 +83,7 @@ export class ShipmentService {
     trackingCode: string,
     event: {
       location: string;
-      status: TrackingStatusStep;
+      status: string;
       title: string;
       description: string;
     }
