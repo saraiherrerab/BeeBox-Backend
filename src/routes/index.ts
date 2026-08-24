@@ -8,6 +8,7 @@ import prealertaRoutes from './prealerta.routes.js';
 import pickupRoutes from './pickup.routes.js';
 import retiroRoutes from './retiro.routes.js';
 import adminRoutes from './admin.routes.js';
+import routeRoutes from './route.routes.js';
 
 const apiRouter = Router();
 
@@ -21,6 +22,7 @@ apiRouter.use('/users', userRoutes);
 apiRouter.use('/prealertas', prealertaRoutes);
 apiRouter.use('/pickups', pickupRoutes);
 apiRouter.use('/retiros', retiroRoutes);
+apiRouter.use('/routes', routeRoutes);
 apiRouter.use('/shipments', shipmentRoutes);
 apiRouter.use('/fleet', fleetRoutes);
 apiRouter.use('/quotes', quoteRoutes);

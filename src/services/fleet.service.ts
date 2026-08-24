@@ -34,4 +34,35 @@ export class FleetService {
       },
     });
   }
+
+  async updateVehicle(
+    id: string,
+    data: {
+      name?: string;
+      category?: string;
+      capacity?: string;
+      volume?: string;
+      features?: string[];
+      imageUrl?: string;
+      active?: boolean;
+    }
+  ) {
+    const updateData: any = { ...data };
+    if (data.features) {
+      updateData.features = JSON.stringify(data.features);
+    }
+
+    return prisma.fleetVehicle.update({
+      where: { id },
+      data: updateData,
+    });
+  }
+
+  async deleteVehicle(id: string) {
+    return prisma.fleetVehicle.update({
+      where: { id },
+      data: { active: false },
+    });
+  }
 }
+
