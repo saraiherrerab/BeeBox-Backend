@@ -21,7 +21,11 @@ export async function getShipmentByCode(req: Request, res: Response, next: NextF
 
 export async function getAllShipments(req: Request, res: Response, next: NextFunction) {
   try {
-    const shipments = await shipmentService.getAll();
+    const authReq = req as any;
+    const isRoleAdmin = authReq.user?.role === 'admin';
+    const userId = authReq.user?.userId;
+
+    const shipments = await shipmentService.getAll(userId, isRoleAdmin);
     res.json(shipments);
   } catch (error) {
     next(error);

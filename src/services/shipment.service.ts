@@ -42,9 +42,19 @@ export class ShipmentService {
     };
   }
 
-  async getAll() {
+  async getAll(userId?: string, isRoleAdmin?: boolean) {
+    const whereClause: any = {};
+    if (!isRoleAdmin && userId) {
+      whereClause.userId = userId;
+    }
+
     return prisma.shipment.findMany({
-      include: { events: true },
+      where: whereClause,
+      include: {
+        events: { orderBy: { timestamp: 'desc' } },
+        user: { select: { id: true, name: true, email: true, suiteCode: true } },
+        prealerta: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
