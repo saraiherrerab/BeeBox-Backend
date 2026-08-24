@@ -1,35 +1,45 @@
+import prisma from '../config/db.js';
 import { RateQuoteQuery, RateQuoteResult } from '../types/index.js';
 
 export class QuoteService {
-  calculateQuote(query: RateQuoteQuery): RateQuoteResult {
+  async calculateQuote(query: RateQuoteQuery): Promise<RateQuoteResult> {
     const { weightKg, serviceType } = query;
 
-    let basePrice = 4500;
-    let pricePerKg = 850;
+    // Intentar buscar tarifa en la base de datos
+    const dbRate = await prisma.rateConfig.findFirst({
+      where: {
+        serviceType: {
+          contains: serviceType,
+        },
+        active: true,
+      },
+    });
+
+    let basePrice = dbRate ? dbRate.basePrice : 15.0;
+    let pricePerKg = dbRate ? dbRate.pricePerKg : 5.5;
     let minHours = 24;
     let maxHours = 48;
 
     if (serviceType.toLowerCase().includes('express')) {
-      basePrice = 8900;
-      pricePerKg = 1200;
-      minHours = 6;
-      maxHours = 12;
-    } else if (serviceType.toLowerCase().includes('carga pesada')) {
-      basePrice = 25000;
-      pricePerKg = 500;
-      minHours = 48;
-      maxHours = 72;
-    } else if (serviceType.toLowerCase().includes('última milla') || serviceType.toLowerCase().includes('ultima milla')) {
-      basePrice = 3500;
-      pricePerKg = 600;
+      if (!dbRate) {
+        basePrice = 25.0;
+        pricePerKg = 8.5;
+      }
       minHours = 12;
       maxHours = 24;
+    } else if (serviceType.toLowerCase().includes('marítimo') || serviceType.toLowerCase().includes('maritimo')) {
+      if (!dbRate) {
+        basePrice = 10.0;
+        pricePerKg = 3.0;
+      }
+      minHours = 120;
+      maxHours = 240;
     }
 
-    const estimatedCostCLP = Math.round(basePrice + weightKg * pricePerKg);
+    const estimatedCostUSD = Number((basePrice + weightKg * pricePerKg).toFixed(2));
 
     return {
-      estimatedCostCLP,
+      estimatedCostCLP: Math.round(estimatedCostUSD * 950), // Conversión demostrativa a CLP
       deliveryHoursMin: minHours,
       deliveryHoursMax: maxHours,
     };

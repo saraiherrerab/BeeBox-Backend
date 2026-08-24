@@ -3,7 +3,7 @@ import { QuoteService } from '../services/quote.service.js';
 
 const quoteService = new QuoteService();
 
-export function calculateQuote(req: Request, res: Response, next: NextFunction) {
+export async function calculateQuote(req: Request, res: Response, next: NextFunction) {
   try {
     const { originCity, destinationCity, weightKg, serviceType } = req.body;
 
@@ -15,7 +15,7 @@ export function calculateQuote(req: Request, res: Response, next: NextFunction) 
       return;
     }
 
-    const result = quoteService.calculateQuote({
+    const result = await quoteService.calculateQuote({
       originCity,
       destinationCity,
       weightKg: Number(weightKg),
@@ -27,3 +27,4 @@ export function calculateQuote(req: Request, res: Response, next: NextFunction) 
     next(error);
   }
 }
+
