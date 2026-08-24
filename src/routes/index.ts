@@ -10,6 +10,7 @@ import retiroRoutes from './retiro.routes.js';
 import adminRoutes from './admin.routes.js';
 import routeRoutes from './route.routes.js';
 import rateRoutes from './rate.routes.js';
+import cmsRoutes from './cms.routes.js';
 
 const apiRouter = Router();
 
@@ -19,6 +20,7 @@ apiRouter.get('/health', (req, res) => {
 
 apiRouter.use('/auth', authRoutes);
 apiRouter.use('/admin', adminRoutes);
+apiRouter.use('/cms', cmsRoutes);
 apiRouter.use('/users', userRoutes);
 apiRouter.use('/prealertas', prealertaRoutes);
 apiRouter.use('/pickups', pickupRoutes);
