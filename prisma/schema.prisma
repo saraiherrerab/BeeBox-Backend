@@ -13,14 +13,19 @@ model User {
   email     String   @unique
   password  String
   phone     String?
-  suiteCode String?
+  suiteCode String?  @unique
   role      String   @default("client")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  shipments  Shipment[]
+  prealertas Prealerta[]
 }
 
 model Shipment {
-  trackingCode      String         @id
+  trackingCode      String   @id
+  userId            String?
+  user              User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   senderName        String
   senderCity        String
   recipientName     String
@@ -30,11 +35,12 @@ model Shipment {
   weightKg          Float
   dimensions        String
   estimatedDelivery String
-  currentStatus     String         @default("recoleccion")
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  currentStatus     String   @default("recoleccion")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  events TrackingEvent[]
+  events    TrackingEvent[]
+  prealerta Prealerta?
 }
 
 model TrackingEvent {
@@ -48,13 +54,31 @@ model TrackingEvent {
   description String
 }
 
-model FleetVehicle {
-  id        String   @id @default(uuid())
-  name      String
-  category  String
-  capacity  String
-  volume    String
-  features  String
-  imageUrl  String?
-  active    Boolean  @default(true)
+model Prealerta {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store           String
+  trackingNumber  String
+  description     String
+  amountPaid      Float
+  receiptFileName String?
+  status          String    @default("Prealertado")
+  warehouseGuide  String?
+  shipmentId      String?   @unique
+  shipment        Shipment? @relation(fields: [shipmentId], references: [trackingCode], onDelete: SetNull)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
+
+model FleetVehicle {
+  id       String  @id @default(uuid())
+  name     String
+  category String
+  capacity String
+  volume   String
+  features String
+  imageUrl String?
+  active   Boolean @default(true)
+}
+
