@@ -85,6 +85,7 @@ model FleetVehicle {
   active   Boolean @default(true)
 
   pickups Pickup[]
+  routes  Route[]
 }
 
 model Pickup {
@@ -127,5 +128,39 @@ model BranchPickup {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
+
+model Route {
+  id         String        @id @default(uuid())
+  name       String
+  originCity String
+  destCity   String
+  vehicleId  String?
+  vehicle    FleetVehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  status     String        @default("ACTIVA")
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+model RateConfig {
+  id            String   @id @default(uuid())
+  serviceType   String   @unique
+  basePrice     Float
+  pricePerKg    Float
+  insuranceRate Float    @default(0.02)
+  active        Boolean  @default(true)
+  updatedAt     DateTime @updatedAt
+}
+
+model CMSContent {
+  id          String   @id @default(uuid())
+  type        String
+  title       String
+  description String
+  imageUrl    String?
+  linkUrl     String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
 
 
