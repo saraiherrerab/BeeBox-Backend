@@ -3,6 +3,7 @@ import authRoutes from './auth.routes.js';
 import shipmentRoutes from './shipment.routes.js';
 import fleetRoutes from './fleet.routes.js';
 import quoteRoutes from './quote.routes.js';
+import userRoutes from './user.routes.js';
 
 const apiRouter = Router();
 
@@ -11,6 +12,7 @@ apiRouter.get('/health', (req, res) => {
 });
 
 apiRouter.use('/auth', authRoutes);
+apiRouter.use('/users', userRoutes);
 apiRouter.use('/shipments', shipmentRoutes);
 apiRouter.use('/fleet', fleetRoutes);
 apiRouter.use('/quotes', quoteRoutes);
