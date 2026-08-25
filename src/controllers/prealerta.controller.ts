@@ -25,7 +25,7 @@ export async function createPrealertaController(req: AuthenticatedRequest, res: 
       return;
     }
 
-    const { store, trackingNumber, description, amountPaid, receiptFileName } = req.body;
+    const { store, trackingNumber, description, amountPaid, receiptFileName, destination } = req.body;
 
     if (!store || !trackingNumber || !description || amountPaid === undefined) {
       res.status(400).json({ error: true, message: 'Faltan campos obligatorios para la prealerta.' });
@@ -38,9 +38,10 @@ export async function createPrealertaController(req: AuthenticatedRequest, res: 
       description,
       amountPaid: Number(amountPaid),
       receiptFileName,
+      destination,
     });
 
-    res.status(201).json({ success: true, prealerta, message: 'Prealerta creada exitosamente.' });
+    res.status(201).json({ success: true, prealerta, message: 'Prealerta registrada exitosamente.' });
   } catch (error: any) {
     res.status(500).json({ error: true, message: error.message || 'Error al crear prealerta.' });
   }
@@ -49,17 +50,17 @@ export async function createPrealertaController(req: AuthenticatedRequest, res: 
 export async function linkPrealertaController(req: AuthenticatedRequest, res: Response) {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { warehouseGuide } = req.body;
+    const { warehouseGuide, destination } = req.body;
 
     if (!warehouseGuide) {
       res.status(400).json({ error: true, message: 'El número de guía de almacén es requerido.' });
       return;
     }
 
-    const linked = await prealertaService.linkPrealerta(id, warehouseGuide);
-    res.json({ success: true, prealerta: linked, message: 'Prealerta vinculada exitosamente con la guía de almacén.' });
+    const confirmed = await prealertaService.linkPrealerta(id, warehouseGuide, destination);
+    res.json({ success: true, prealerta: confirmed, message: 'Prealerta confirmada exitosamente con la guía de almacén y destino.' });
   } catch (error: any) {
-    res.status(500).json({ error: true, message: error.message || 'Error al vincular prealerta.' });
+    res.status(500).json({ error: true, message: error.message || 'Error al confirmar prealerta.' });
   }
 }
 

@@ -80,6 +80,7 @@ model Prealerta {
   description     String
   amountPaid      Float
   receiptFileName String?
+  destination     String?   @default("Caracas, Venezuela")
   status          String    @default("Prealertado")
   warehouseGuide  String?
   shipmentId      String?   @unique

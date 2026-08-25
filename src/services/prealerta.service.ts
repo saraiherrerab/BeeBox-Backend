@@ -17,6 +17,7 @@ export class PrealertaService {
         { trackingNumber: { contains: search } },
         { description: { contains: search } },
         { warehouseGuide: { contains: search } },
+        { destination: { contains: search } },
       ];
     }
 
@@ -55,6 +56,7 @@ export class PrealertaService {
       description: string;
       amountPaid: number;
       receiptFileName?: string;
+      destination?: string;
     }
   ) {
     const prealerta = await prisma.prealerta.create({
@@ -65,6 +67,7 @@ export class PrealertaService {
         description: data.description,
         amountPaid: Number(data.amountPaid),
         receiptFileName: data.receiptFileName || null,
+        destination: data.destination || 'Caracas, Venezuela',
         status: 'Prealertado',
       },
       include: {
@@ -82,7 +85,7 @@ export class PrealertaService {
     return prealerta;
   }
 
-  async linkPrealerta(id: string, warehouseGuide: string) {
+  async linkPrealerta(id: string, warehouseGuide: string, destination?: string) {
     const existing = await prisma.prealerta.findUnique({
       where: { id },
       include: { user: true },
@@ -91,6 +94,8 @@ export class PrealertaService {
     if (!existing) {
       throw new Error('Prealerta no encontrada.');
     }
+
+    const targetDestination = destination || existing.destination || 'Caracas, Venezuela';
 
     let shipment = await prisma.shipment.findUnique({
       where: { trackingCode: warehouseGuide },
@@ -101,12 +106,12 @@ export class PrealertaService {
         data: {
           trackingCode: warehouseGuide,
           userId: existing.userId,
-          senderName: existing.store || 'Tulsa Warehouse',
-          senderCity: 'Tulsa, OK',
+          senderName: existing.store || 'Oklahoma Warehouse',
+          senderCity: 'Broken Arrow, OK',
           recipientName: existing.user.name,
-          recipientCity: 'Ciudad de México',
+          recipientCity: targetDestination,
           recipientAddress: 'Dirección Registrada del Cliente',
-          serviceType: 'Aéreo Exprés',
+          serviceType: 'Aéreo Exprés Internacional',
           weightKg: 1.0,
           dimensions: '25x20x15 cm',
           estimatedDelivery: '3-5 días hábiles',
@@ -117,10 +122,10 @@ export class PrealertaService {
       await prisma.trackingEvent.create({
         data: {
           shipmentId: warehouseGuide,
-          location: 'Almacén Central - Tulsa, OK',
+          location: 'Almacén Central - Broken Arrow, OK',
           status: 'En el origen',
-          title: 'Paquete Recibido y Registrado',
-          description: `El paquete proveniente de ${existing.store} ha sido recibido en el almacén de Tulsa, OK con guía ${warehouseGuide}.`,
+          title: 'Paquete Recibido y Confirmado en Almacén',
+          description: `El paquete proveniente de ${existing.store} ha sido confirmado en el almacén con la guía ${warehouseGuide} y preparado para despacho hacia ${targetDestination}.`,
         },
       });
     }
@@ -129,7 +134,8 @@ export class PrealertaService {
       where: { id },
       data: {
         warehouseGuide,
-        status: 'Vinculado',
+        destination: targetDestination,
+        status: 'Confirmado',
         shipmentId: shipment.trackingCode,
       },
       include: {
@@ -145,11 +151,11 @@ export class PrealertaService {
       },
     });
 
-    // Send origin notification to user
+    // Send notification to user
     await notificationService.createNotification(
       existing.userId,
-      'Prealerta Vinculada / Recibido en Tulsa, OK',
-      `Tu prealerta de ${existing.store} (${existing.trackingNumber}) fue recibida en Tulsa, OK y se le asignó la guía ${warehouseGuide}.`,
+      '¡Prealerta Confirmada! Recibido en Almacén',
+      `Tu prealerta de ${existing.store} (${existing.trackingNumber}) fue recepcionada en el almacén de Oklahoma (Guía: ${warehouseGuide}) y confirmada para envío a ${targetDestination}.`,
       'origen'
     );
 
