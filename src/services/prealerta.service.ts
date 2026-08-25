@@ -1,5 +1,6 @@
 import prisma from '../config/db.js';
 import { NotificationService } from './notification.service.js';
+import { emitSocketEvent } from '../socket.js';
 
 const notificationService = new NotificationService();
 
@@ -81,6 +82,9 @@ export class PrealertaService {
         },
       },
     });
+
+    emitSocketEvent('prealerta:updated', prealerta);
+    emitSocketEvent('metrics:updated');
 
     return prealerta;
   }
@@ -166,6 +170,11 @@ export class PrealertaService {
       'origen'
     );
 
+    emitSocketEvent('prealerta:updated', updatedPrealerta);
+    emitSocketEvent('shipment:updated', shipment);
+    emitSocketEvent('notification:new', { userId: existing.userId });
+    emitSocketEvent('metrics:updated');
+
     return updatedPrealerta;
   }
 
@@ -185,6 +194,9 @@ export class PrealertaService {
         shipment: true,
       },
     });
+
+    emitSocketEvent('prealerta:updated', updated);
+    emitSocketEvent('metrics:updated');
 
     return updated;
   }

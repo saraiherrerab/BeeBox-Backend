@@ -1,6 +1,7 @@
 import prisma from '../config/db.js';
 import { TrackingEvent } from '@prisma/client';
 import { NotificationService } from './notification.service.js';
+import { emitSocketEvent } from '../socket.js';
 
 const notificationService = new NotificationService();
 
@@ -101,6 +102,9 @@ export class ShipmentService {
       );
     }
 
+    emitSocketEvent('shipment:updated', shipment);
+    emitSocketEvent('metrics:updated');
+
     return shipment;
   }
 
@@ -145,7 +149,12 @@ export class ShipmentService {
         `Tu paquete ${trackingCode}: ${event.description || event.title}`,
         notifType
       );
+
+      emitSocketEvent('notification:new', { userId: updatedShipment.userId });
     }
+
+    emitSocketEvent('shipment:updated', updatedShipment);
+    emitSocketEvent('metrics:updated');
 
     return updatedShipment;
   }
