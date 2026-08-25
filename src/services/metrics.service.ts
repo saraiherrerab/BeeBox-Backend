@@ -4,26 +4,32 @@ export class MetricsService {
   async getAdminMetrics() {
     const totalClients = await prisma.user.count({
       where: {
-        role: 'client',
+        role: {
+          in: ['CLIENT', 'client'],
+        },
       },
     });
 
     const pendingPrealertas = await prisma.prealerta.count({
       where: {
-        status: 'Prealertado',
+        status: {
+          in: ['Prealertado', 'prealertado', 'PENDIENTE', 'pendiente'],
+        },
       },
     });
 
     const pendingPickups = await prisma.pickup.count({
       where: {
-        status: 'PENDIENTE',
+        status: {
+          in: ['PENDIENTE', 'pendiente', 'SOLICITADO', 'solicitado'],
+        },
       },
     });
 
     const activeShipments = await prisma.shipment.count({
       where: {
         currentStatus: {
-          notIn: ['entregado', 'ENTREGADO'],
+          notIn: ['entregado', 'ENTREGADO', 'Llegó a su destino'],
         },
       },
     });
