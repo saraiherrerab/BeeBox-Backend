@@ -2,7 +2,7 @@ import prisma from '../config/db.js';
 
 export class RouteService {
   async getRoutes() {
-    const routes = await prisma.route.findMany({
+    let routes = await prisma.route.findMany({
       include: {
         vehicle: {
           select: {
@@ -18,6 +18,41 @@ export class RouteService {
       },
     });
 
+    if (routes.length === 0) {
+      await prisma.route.createMany({
+        data: [
+          {
+            name: 'Ruta Caracas, VE',
+            originCity: 'Broken Arrow, OK',
+            destCity: 'Caracas, Venezuela',
+            status: 'ACTIVA',
+          },
+          {
+            name: 'Ruta Bogotá, CO',
+            originCity: 'Broken Arrow, OK',
+            destCity: 'Bogotá, Colombia',
+            status: 'ACTIVA',
+          },
+        ],
+      });
+
+      routes = await prisma.route.findMany({
+        include: {
+          vehicle: {
+            select: {
+              id: true,
+              name: true,
+              category: true,
+              capacity: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    }
+
     return routes;
   }
 
@@ -25,7 +60,7 @@ export class RouteService {
     const route = await prisma.route.create({
       data: {
         name: data.name,
-        originCity: data.originCity,
+        originCity: data.originCity || 'Broken Arrow, OK',
         destCity: data.destCity,
         vehicleId: data.vehicleId || null,
         status: 'ACTIVA',
