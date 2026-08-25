@@ -24,7 +24,7 @@ API RESTful backend para **BeeBox Empresa de Transporte SpA**. Desarrollada con 
 
 ## ⚡ Guía de Inicialización Rápida
 
-### 1. Clona o ubícate en el directorio del proyecto
+### 1. Ubícate en el directorio del backend
 
 ```bash
 cd BeeBox-Backend
@@ -37,9 +37,8 @@ Crea o verifica el archivo `.env` en la raíz del backend:
 ```env
 PORT=4000
 DATABASE_URL="file:./dev.db"
+JWT_SECRET="beebox_super_secret_jwt_key"
 ```
-
-> **Nota:** Existe un archivo `.env.example` como referencia.
 
 ### 3. Instala las dependencias
 
@@ -47,25 +46,23 @@ DATABASE_URL="file:./dev.db"
 npm install
 ```
 
-### 4. Genera el cliente de Prisma y ejecuta las migraciones
+### 4. Genera el cliente de Prisma y aplica el esquema a la base de datos
 
 ```bash
-# Generar el cliente de Prisma en node_modules
-npm run prisma:generate
+# Generar los tipos de Prisma Client
+npx prisma generate
 
-# Aplicar las migraciones a la base de datos SQLite
-npm run prisma:migrate
+# Sincronizar el esquema con la base de datos SQLite (dev.db)
+npx prisma db push
 ```
 
 ### 5. Puebla la base de datos con datos de prueba (Seeding)
-
-Ejecuta el script de seed para crear los usuarios por defecto, envíos de demo y vehículos de la flota:
 
 ```bash
 npm run db:seed
 ```
 
-**Credenciales creadas por defecto:**
+**Credenciales por defecto:**
 - 👤 **Admin**: `admin@beebox.com` / `admin123`
 - 👤 **Cliente**: `juan.perez@beebox.com` / `cliente123`
 - 📦 **Código de Rastreo Demo**: `BBX-89421`
@@ -76,7 +73,7 @@ npm run db:seed
 npm run dev
 ```
 
-El servidor se iniciará en **`http://localhost:4000`** con recarga automática al guardar cambios.
+El servidor estará corriendo en **`http://localhost:4000`**.
 
 ---
 
@@ -85,33 +82,20 @@ El servidor se iniciará en **`http://localhost:4000`** con recarga automática 
 | Comando | Descripción |
 | :--- | :--- |
 | `npm run dev` | Inicia el servidor en modo desarrollo con recarga en vivo (`tsx watch src/server.ts`). |
-| `npm run build` | Compila el proyecto TypeScript a JavaScript en la carpeta `dist/`. |
+| `npx tsc --noEmit` | Valida los tipos de TypeScript sin compilar. |
+| `npm run build` | Compila el proyecto TypeScript a JavaScript en `dist/`. |
 | `npm start` | Ejecuta la versión compilada en producción (`node dist/server.js`). |
-| `npm run prisma:generate` | Genera los tipos e interfaz del cliente de Prisma. |
-| `npm run prisma:migrate` | Aplica las migraciones dev de Prisma en la BD. |
-| `npm run db:seed` | Puebla la base de datos con datos iniciales de prueba. |
+| `npx prisma generate` | Genera las interfaces y tipos del cliente de Prisma. |
+| `npx prisma db push` | Sincroniza la estructura del modelo Prisma en `dev.db`. |
+| `npm run db:seed` | Puebla la base de datos con usuarios y envíos iniciales. |
 
 ---
 
-## 📡 Endpoints Principales de la API
+## 📡 Endpoints Destacados de la API (`http://localhost:4000/api`)
 
-La base URL de la API es **`http://localhost:4000/api`**:
-
-- **Health Check**: `GET /api/health`
-- **Autenticación**:
-  - `POST /api/auth/login`
-  - `POST /api/auth/register`
-- **Envíos & Rastreo**:
-  - `GET /api/shipments`
-  - `GET /api/shipments/:trackingCode`
-  - `POST /api/shipments`
-- **Flota de Vehículos**:
-  - `GET /api/fleet`
-- **Cotizador**:
-  - `POST /api/quotes/calculate`
-
----
-
-## 🔗 Conexión con el Frontend
-
-El frontend (`Beebox-Empresa-De-Transporte`) se conecta por defecto a este backend a través de `http://localhost:4000/api`. Asegúrate de tener este servidor corriendo antes de usar el frontend.
+- **Autenticación**: `POST /api/auth/login`, `POST /api/auth/register`, `GET /api/auth/me`
+- **Gestión de Clientes**: `GET /api/users`, `PATCH /api/users/:id/status` *(Activar/Inhabilitar con motivo interno)*
+- **Sistema de Notificaciones**: `GET /api/notifications`, `PATCH /api/notifications/:id/read`, `PATCH /api/notifications/read-all`
+- **Prealertas Miami**: `GET /api/prealertas`, `POST /api/prealertas`, `POST /api/prealertas/:id/link`
+- **Seguimiento de Envíos**: `GET /api/shipments`, `GET /api/shipments/:trackingCode`, `POST /api/shipments` *(Estados: "En el origen", "En camino", "Llegó a su destino")*
+- **Cotizador & Flota**: `POST /api/quotes/calculate`, `GET /api/fleet`
