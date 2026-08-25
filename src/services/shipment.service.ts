@@ -149,4 +149,31 @@ export class ShipmentService {
 
     return updatedShipment;
   }
+
+  async updateStatus(trackingCode: string, status: string) {
+    let title = 'Actualización de Estado';
+    let description = `El estado del paquete con guía ${trackingCode} ha sido actualizado a: ${status}.`;
+    let location = 'Almacén / Tránsito';
+
+    if (status === 'En el origen') {
+      title = 'Recibido en Origen';
+      description = `El paquete ha sido ingresado y preparado en el almacén de origen (Broken Arrow, OK).`;
+      location = 'Broken Arrow, OK';
+    } else if (status === 'En camino') {
+      title = 'Envío En Camino';
+      description = `El paquete se encuentra en tránsito aéreo/marítimo hacia su ciudad de destino.`;
+      location = 'En Ruta Internacional';
+    } else if (status === 'Llegó a su destino') {
+      title = '¡Llegó a su Destino!';
+      description = `El paquete ha arribado exitosamente al centro de distribución en su ciudad de destino.`;
+      location = 'Centro de Distribución Destino';
+    }
+
+    return this.addTrackingEvent(trackingCode, {
+      status,
+      title,
+      description,
+      location,
+    });
+  }
 }

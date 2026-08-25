@@ -50,3 +50,18 @@ export async function addEvent(req: Request, res: Response, next: NextFunction) 
     next(error);
   }
 }
+
+export async function updateShipmentStatus(req: Request, res: Response, next: NextFunction) {
+  try {
+    const trackingCode = String(req.params.trackingCode);
+    const { status } = req.body;
+    if (!status) {
+      res.status(400).json({ error: true, message: 'El estado es requerido.' });
+      return;
+    }
+    const updated = await shipmentService.updateStatus(trackingCode, status);
+    res.json({ success: true, shipment: updated });
+  } catch (error) {
+    next(error);
+  }
+}
