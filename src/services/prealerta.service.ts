@@ -86,13 +86,20 @@ export class PrealertaService {
   }
 
   async linkPrealerta(id: string, warehouseGuide: string, destination?: string) {
-    const existing = await prisma.prealerta.findUnique({
+    let existing = await prisma.prealerta.findUnique({
       where: { id },
       include: { user: true },
     });
 
     if (!existing) {
-      throw new Error('Prealerta no encontrada.');
+      existing = await prisma.prealerta.findFirst({
+        where: { trackingNumber: id },
+        include: { user: true },
+      });
+    }
+
+    if (!existing) {
+      throw new Error(`Prealerta '${id}' no encontrada en la base de datos.`);
     }
 
     const targetDestination = destination || existing.destination || 'Caracas, Venezuela';
@@ -131,7 +138,7 @@ export class PrealertaService {
     }
 
     const updatedPrealerta = await prisma.prealerta.update({
-      where: { id },
+      where: { id: existing.id },
       data: {
         warehouseGuide,
         destination: targetDestination,
