@@ -132,4 +132,34 @@ export class AuthService {
       ...(roleString === 'admin' ? { disabledReason: userRecord.disabledReason || null } : {}),
     };
   }
+
+  async updatePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error('Usuario no encontrado.');
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) throw new Error('La contraseña actual es incorrecta.');
+
+    validatePassword(newPassword);
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashed },
+    });
+
+    return { success: true, message: 'Contraseña actualizada exitosamente.' };
+  }
+
+  async updateProfile(userId: string, data: { name?: string; phone?: string }) {
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(data.name ? { name: data.name } : {}),
+        ...(data.phone !== undefined ? { phone: data.phone } : {}),
+      },
+    });
+
+    return this.getUserById(updated.id);
+  }
 }

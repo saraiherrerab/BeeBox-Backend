@@ -47,12 +47,51 @@ export async function getMe(req: Request, res: Response, next: NextFunction) {
     const userProfile = await authService.getUserById(userId);
 
     if (!userProfile) {
-      res.status(444).json({ error: true, message: 'Usuario no encontrado.' });
+      res.status(404).json({ error: true, message: 'Usuario no encontrado.' });
       return;
     }
 
     res.json({ user: userProfile });
   } catch (error) {
     next(error);
+  }
+}
+
+export async function changePassword(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = (req as any).user?.userId;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!userId) {
+      res.status(401).json({ error: true, message: 'No autenticado.' });
+      return;
+    }
+
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ error: true, message: 'La contraseña actual y la nueva son requeridas.' });
+      return;
+    }
+
+    const result = await authService.updatePassword(userId, currentPassword, newPassword);
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: true, message: error.message || 'Error al cambiar contraseña.' });
+  }
+}
+
+export async function updateProfile(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = (req as any).user?.userId;
+    const { name, phone } = req.body;
+
+    if (!userId) {
+      res.status(401).json({ error: true, message: 'No autenticado.' });
+      return;
+    }
+
+    const updatedUser = await authService.updateProfile(userId, { name, phone });
+    res.json({ user: updatedUser });
+  } catch (error: any) {
+    res.status(400).json({ error: true, message: error.message || 'Error al actualizar perfil.' });
   }
 }
