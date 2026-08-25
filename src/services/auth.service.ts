@@ -47,8 +47,11 @@ export class AuthService {
         phone: data.phone || null,
         suiteCode,
         role: 'CLIENT',
-      },
+        active: true,
+      } as any,
     });
+
+    const userRecord = user as any;
 
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: user.role.toLowerCase() },
@@ -65,6 +68,7 @@ export class AuthService {
         phone: user.phone || '',
         suiteCode: user.suiteCode || '',
         role: user.role.toLowerCase() as 'client' | 'admin',
+        active: userRecord.active ?? true,
       },
     };
   }
@@ -83,6 +87,7 @@ export class AuthService {
       throw new Error('Credenciales inválidas.');
     }
 
+    const userRecord = user as any;
     const roleString = (user.role && user.role.toUpperCase() === 'ADMIN') ? 'admin' : 'client';
 
     const token = jwt.sign(
@@ -100,6 +105,8 @@ export class AuthService {
         phone: user.phone || '',
         suiteCode: user.suiteCode || '',
         role: roleString as 'client' | 'admin',
+        active: userRecord.active ?? true,
+        ...(roleString === 'admin' ? { disabledReason: userRecord.disabledReason || null } : {}),
       },
     };
   }
@@ -111,6 +118,7 @@ export class AuthService {
 
     if (!user) return null;
 
+    const userRecord = user as any;
     const roleString = (user.role && user.role.toUpperCase() === 'ADMIN') ? 'admin' : 'client';
 
     return {
@@ -120,6 +128,8 @@ export class AuthService {
       phone: user.phone || '',
       suiteCode: user.suiteCode || '',
       role: roleString as 'client' | 'admin',
+      active: userRecord.active ?? true,
+      ...(roleString === 'admin' ? { disabledReason: userRecord.disabledReason || null } : {}),
     };
   }
 }

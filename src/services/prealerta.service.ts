@@ -1,4 +1,7 @@
 import prisma from '../config/db.js';
+import { NotificationService } from './notification.service.js';
+
+const notificationService = new NotificationService();
 
 export class PrealertaService {
   async getPrealertas(userId?: string, isRoleAdmin?: boolean, search?: string) {
@@ -89,7 +92,6 @@ export class PrealertaService {
       throw new Error('Prealerta no encontrada.');
     }
 
-    // Verificar si ya existe un Shipment con este código de seguimiento de almacén
     let shipment = await prisma.shipment.findUnique({
       where: { trackingCode: warehouseGuide },
     });
@@ -108,16 +110,15 @@ export class PrealertaService {
           weightKg: 1.0,
           dimensions: '25x20x15 cm',
           estimatedDelivery: '3-5 días hábiles',
-          currentStatus: 'recoleccion',
+          currentStatus: 'En el origen',
         },
       });
 
-      // Crear hito inicial de tracking
       await prisma.trackingEvent.create({
         data: {
           shipmentId: warehouseGuide,
           location: 'Almacén Central - Miami, FL',
-          status: 'recoleccion',
+          status: 'En el origen',
           title: 'Paquete Recibido y Registrado',
           description: `El paquete proveniente de ${existing.store} ha sido recibido en el almacén de Miami con guía ${warehouseGuide}.`,
         },
@@ -143,6 +144,14 @@ export class PrealertaService {
         shipment: true,
       },
     });
+
+    // Send origin notification to user
+    await notificationService.createNotification(
+      existing.userId,
+      'Prealerta Vinculada / Recibido en Miami',
+      `Tu prealerta de ${existing.store} (${existing.trackingNumber}) fue recibida en Miami y se le asignó la guía ${warehouseGuide}.`,
+      'origen'
+    );
 
     return updatedPrealerta;
   }

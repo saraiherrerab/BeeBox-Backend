@@ -8,20 +8,23 @@ generator client {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  phone     String?
-  suiteCode String?  @unique
-  role      String   @default("client")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(uuid())
+  name           String
+  email          String   @unique
+  password       String
+  phone          String?
+  suiteCode      String?  @unique
+  role           String   @default("client")
+  active         Boolean  @default(true)
+  disabledReason String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   shipments     Shipment[]
   prealertas    Prealerta[]
   pickups       Pickup[]
   branchPickups BranchPickup[]
+  notifications Notification[]
 }
 
 model Shipment {
@@ -37,13 +40,24 @@ model Shipment {
   weightKg          Float
   dimensions        String
   estimatedDelivery String
-  currentStatus     String   @default("recoleccion")
+  currentStatus     String   @default("En el origen")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   events        TrackingEvent[]
   prealerta     Prealerta?
   branchPickups BranchPickup[]
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("info")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 model TrackingEvent {

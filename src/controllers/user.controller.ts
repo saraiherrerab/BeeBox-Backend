@@ -67,3 +67,26 @@ export async function updateUserRoleController(req: AuthenticatedRequest, res: R
     res.status(500).json({ error: true, message: error.message || 'Error al actualizar rol.' });
   }
 }
+
+export async function updateUserStatusController(req: AuthenticatedRequest, res: Response) {
+  try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const { active, disabledReason } = req.body;
+
+    if (typeof active !== 'boolean') {
+      res.status(400).json({ error: true, message: 'El campo active debe ser booleano (true o false).' });
+      return;
+    }
+
+    const updated = await userService.updateUserStatus(id, active, disabledReason);
+    res.json({
+      success: true,
+      user: updated,
+      message: active
+        ? 'Cliente activado exitosamente.'
+        : 'Cliente inhabilitado exitosamente.',
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: true, message: error.message || 'Error al actualizar estado del usuario.' });
+  }
+}

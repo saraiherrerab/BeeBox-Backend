@@ -1,5 +1,8 @@
 import prisma from '../config/db.js';
 import { TrackingEvent } from '@prisma/client';
+import { NotificationService } from './notification.service.js';
+
+const notificationService = new NotificationService();
 
 export class ShipmentService {
   async getByTrackingCode(trackingCode: string) {
@@ -14,7 +17,6 @@ export class ShipmentService {
 
     if (!shipment) return null;
 
-    // Adapt database enum/fields to API contract
     return {
       trackingCode: shipment.trackingCode,
       sender: {
@@ -61,6 +63,7 @@ export class ShipmentService {
 
   async createShipment(data: {
     trackingCode: string;
+    userId?: string;
     senderName: string;
     senderCity: string;
     recipientName: string;
@@ -71,22 +74,34 @@ export class ShipmentService {
     dimensions: string;
     estimatedDelivery: string;
   }) {
-    return prisma.shipment.create({
+    const shipment = await prisma.shipment.create({
       data: {
         ...data,
+        currentStatus: 'En el origen',
         events: {
           create: [
             {
               location: data.senderCity,
-              status: 'recoleccion',
-              title: 'Orden Creada',
-              description: 'El envío ha sido ingresado en el sistema BeeBox.',
+              status: 'En el origen',
+              title: 'Recibido en Origen',
+              description: 'El envío ha sido ingresado en el almacén de origen.',
             },
           ],
         },
       },
       include: { events: true },
     });
+
+    if (data.userId) {
+      await notificationService.createNotification(
+        data.userId,
+        'Envío Creado / Recibido en Origen',
+        `Tu paquete con guía ${data.trackingCode} ha sido recibido en el almacén de origen.`,
+        'origen'
+      );
+    }
+
+    return shipment;
   }
 
   async addTrackingEvent(
@@ -108,6 +123,29 @@ export class ShipmentService {
       },
       include: { events: true },
     });
+
+    if (updatedShipment.userId) {
+      let notifTitle = `Actualización de Envío (${event.status})`;
+      let notifType = 'info';
+
+      if (event.status === 'En el origen') {
+        notifTitle = 'Recibido en Origen';
+        notifType = 'origen';
+      } else if (event.status === 'En camino') {
+        notifTitle = 'Envío En Camino';
+        notifType = 'en_camino';
+      } else if (event.status === 'Llegó a su destino') {
+        notifTitle = '¡Llegó a su Destino!';
+        notifType = 'destino';
+      }
+
+      await notificationService.createNotification(
+        updatedShipment.userId,
+        notifTitle,
+        `Tu paquete ${trackingCode}: ${event.description || event.title}`,
+        notifType
+      );
+    }
 
     return updatedShipment;
   }

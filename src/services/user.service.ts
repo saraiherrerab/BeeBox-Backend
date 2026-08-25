@@ -1,4 +1,7 @@
 import prisma from '../config/db.js';
+import { NotificationService } from './notification.service.js';
+
+const notificationService = new NotificationService();
 
 export class UserService {
   async getAllUsers() {
@@ -10,6 +13,8 @@ export class UserService {
         phone: true,
         suiteCode: true,
         role: true,
+        active: true,
+        disabledReason: true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -29,6 +34,8 @@ export class UserService {
       role: (u.role && u.role.toLowerCase() === 'admin') ? 'admin' : 'client',
       phone: u.phone || '',
       suiteCode: u.suiteCode || '',
+      active: u.active ?? true,
+      disabledReason: u.disabledReason || null,
     }));
   }
 
@@ -42,6 +49,8 @@ export class UserService {
         phone: true,
         suiteCode: true,
         role: true,
+        active: true,
+        disabledReason: true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -60,6 +69,8 @@ export class UserService {
       role: (user.role && user.role.toLowerCase() === 'admin') ? 'admin' : 'client',
       phone: user.phone || '',
       suiteCode: user.suiteCode || '',
+      active: user.active ?? true,
+      disabledReason: user.disabledReason || null,
     };
   }
 
@@ -77,6 +88,8 @@ export class UserService {
         phone: true,
         suiteCode: true,
         role: true,
+        active: true,
+        disabledReason: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -87,6 +100,8 @@ export class UserService {
       role: (updated.role && updated.role.toLowerCase() === 'admin') ? 'admin' : 'client',
       phone: updated.phone || '',
       suiteCode: updated.suiteCode || '',
+      active: updated.active ?? true,
+      disabledReason: updated.disabledReason || null,
     };
   }
 
@@ -102,6 +117,8 @@ export class UserService {
         phone: true,
         suiteCode: true,
         role: true,
+        active: true,
+        disabledReason: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -112,6 +129,49 @@ export class UserService {
       role: (updated.role && updated.role.toLowerCase() === 'admin') ? 'admin' : 'client',
       phone: updated.phone || '',
       suiteCode: updated.suiteCode || '',
+      active: updated.active ?? true,
+      disabledReason: updated.disabledReason || null,
+    };
+  }
+
+  async updateUserStatus(id: string, active: boolean, disabledReason?: string) {
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        active,
+        disabledReason: active ? null : (disabledReason || 'Inhabilitado por administración'),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        suiteCode: true,
+        role: true,
+        active: true,
+        disabledReason: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    // If disabled, generate automatic notification for the client (generic text as requested)
+    if (!active) {
+      await notificationService.createNotification(
+        id,
+        'Cuenta Inhabilitada',
+        'Tu cuenta se encuentra inhabilitada hasta nuevo aviso.',
+        'account_status'
+      );
+    }
+
+    return {
+      ...updated,
+      role: (updated.role && updated.role.toLowerCase() === 'admin') ? 'admin' : 'client',
+      phone: updated.phone || '',
+      suiteCode: updated.suiteCode || '',
+      active: updated.active,
+      disabledReason: updated.disabledReason || null,
     };
   }
 }
