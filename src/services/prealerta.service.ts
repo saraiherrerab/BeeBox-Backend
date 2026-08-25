@@ -101,8 +101,8 @@ export class PrealertaService {
         data: {
           trackingCode: warehouseGuide,
           userId: existing.userId,
-          senderName: existing.store || 'Miami Warehouse',
-          senderCity: 'Miami, FL',
+          senderName: existing.store || 'Tulsa Warehouse',
+          senderCity: 'Tulsa, OK',
           recipientName: existing.user.name,
           recipientCity: 'Ciudad de México',
           recipientAddress: 'Dirección Registrada del Cliente',
@@ -117,10 +117,10 @@ export class PrealertaService {
       await prisma.trackingEvent.create({
         data: {
           shipmentId: warehouseGuide,
-          location: 'Almacén Central - Miami, FL',
+          location: 'Almacén Central - Tulsa, OK',
           status: 'En el origen',
           title: 'Paquete Recibido y Registrado',
-          description: `El paquete proveniente de ${existing.store} ha sido recibido en el almacén de Miami con guía ${warehouseGuide}.`,
+          description: `El paquete proveniente de ${existing.store} ha sido recibido en el almacén de Tulsa, OK con guía ${warehouseGuide}.`,
         },
       });
     }
@@ -148,8 +148,8 @@ export class PrealertaService {
     // Send origin notification to user
     await notificationService.createNotification(
       existing.userId,
-      'Prealerta Vinculada / Recibido en Miami',
-      `Tu prealerta de ${existing.store} (${existing.trackingNumber}) fue recibida en Miami y se le asignó la guía ${warehouseGuide}.`,
+      'Prealerta Vinculada / Recibido en Tulsa, OK',
+      `Tu prealerta de ${existing.store} (${existing.trackingNumber}) fue recibida en Tulsa, OK y se le asignó la guía ${warehouseGuide}.`,
       'origen'
     );
 

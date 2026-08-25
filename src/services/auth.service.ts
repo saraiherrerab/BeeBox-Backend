@@ -37,7 +37,7 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    const suiteCode = `CAS-${Math.floor(10000 + Math.random() * 90000)}-MIAMI`;
+    const suiteCode = `CAS-${Math.floor(10000 + Math.random() * 90000)}-TULSA`;
 
     const user = await prisma.user.create({
       data: {
