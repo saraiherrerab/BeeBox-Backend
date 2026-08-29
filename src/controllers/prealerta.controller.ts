@@ -6,7 +6,7 @@ const prealertaService = new PrealertaService();
 
 export async function getPrealertasController(req: AuthenticatedRequest, res: Response) {
   try {
-    const isRoleAdmin = req.user?.role === 'admin';
+    const isRoleAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
     const userId = req.user?.userId;
     const search = req.query.search ? String(req.query.search) : undefined;
 
@@ -69,7 +69,7 @@ export async function updatePrealertaController(req: AuthenticatedRequest, res: 
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const userId = req.user?.userId;
-    const isRoleAdmin = req.user?.role === 'admin';
+    const isRoleAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
 
     if (!userId) {
       res.status(401).json({ error: true, message: 'Usuario no autenticado.' });

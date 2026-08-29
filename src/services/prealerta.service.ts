@@ -222,8 +222,8 @@ export class PrealertaService {
       throw new Error('No tienes permiso para modificar esta prealerta.');
     }
 
-    if (!isRoleAdmin && existing.status !== 'Prealertado') {
-      throw new Error('No es posible editar una prealerta en tránsito o confirmada.');
+    if (existing.status === 'Confirmado' || existing.status === 'Vinculado') {
+      throw new Error('No es posible editar una prealerta que ya ha sido confirmada.');
     }
 
     const updateData: any = {};
@@ -233,6 +233,7 @@ export class PrealertaService {
     if (data.description !== undefined) updateData.description = data.description;
     if (data.amountPaid !== undefined) updateData.amountPaid = Number(data.amountPaid);
     if (data.destination !== undefined) updateData.destination = data.destination;
+    if ((data as any).status !== undefined) updateData.status = (data as any).status;
 
     const updated = await prisma.prealerta.update({
       where: { id: existing.id },
