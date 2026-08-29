@@ -25,7 +25,7 @@ export async function createPrealertaController(req: AuthenticatedRequest, res: 
       return;
     }
 
-    const { store, trackingNumber, description, amountPaid, receiptFileName, destination } = req.body;
+    const { store, trackingNumber, providerWarehouseReceipt, description, amountPaid, receiptFileName, destination } = req.body;
 
     if (!store || !trackingNumber || !description || amountPaid === undefined) {
       res.status(400).json({ error: true, message: 'Faltan campos obligatorios para la prealerta.' });
@@ -35,6 +35,7 @@ export async function createPrealertaController(req: AuthenticatedRequest, res: 
     const prealerta = await prealertaService.createPrealerta(userId, {
       store,
       trackingNumber,
+      providerWarehouseReceipt,
       description,
       amountPaid: Number(amountPaid),
       receiptFileName,
@@ -50,17 +51,37 @@ export async function createPrealertaController(req: AuthenticatedRequest, res: 
 export async function linkPrealertaController(req: AuthenticatedRequest, res: Response) {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { warehouseGuide, destination } = req.body;
+    const { warehouseGuide, destination, providerWarehouseReceipt } = req.body;
 
     if (!warehouseGuide) {
       res.status(400).json({ error: true, message: 'El número de guía de almacén es requerido.' });
       return;
     }
 
-    const confirmed = await prealertaService.linkPrealerta(id, warehouseGuide, destination);
+    const confirmed = await prealertaService.linkPrealerta(id, warehouseGuide, destination, providerWarehouseReceipt);
     res.json({ success: true, prealerta: confirmed, message: 'Prealerta confirmada exitosamente con la guía de almacén y destino.' });
   } catch (error: any) {
     res.status(500).json({ error: true, message: error.message || 'Error al confirmar prealerta.' });
+  }
+}
+
+export async function updatePrealertaController(req: AuthenticatedRequest, res: Response) {
+  try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const userId = req.user?.userId;
+    const isRoleAdmin = req.user?.role === 'admin';
+
+    if (!userId) {
+      res.status(401).json({ error: true, message: 'Usuario no autenticado.' });
+      return;
+    }
+
+    const updated = await prealertaService.updatePrealerta(id, userId, isRoleAdmin, req.body);
+    res.json({ success: true, prealerta: updated, message: 'Prealerta actualizada correctamente.' });
+  } catch (error: any) {
+    const isForbidden = error.message?.includes('No tienes permiso') || error.message?.includes('No es posible editar');
+    const statusCode = isForbidden ? 403 : 400;
+    res.status(statusCode).json({ error: true, message: error.message || 'Error al actualizar prealerta.' });
   }
 }
 

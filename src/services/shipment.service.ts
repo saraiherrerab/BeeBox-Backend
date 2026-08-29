@@ -45,10 +45,20 @@ export class ShipmentService {
     };
   }
 
-  async getAll(userId?: string, isRoleAdmin?: boolean) {
+  async getAll(userId?: string, isRoleAdmin?: boolean, search?: string) {
     const whereClause: any = {};
     if (!isRoleAdmin && userId) {
       whereClause.userId = userId;
+    }
+
+    if (search) {
+      whereClause.OR = [
+        { trackingCode: { contains: search } },
+        { providerWarehouseReceipt: { contains: search } },
+        { recipientName: { contains: search } },
+        { recipientCity: { contains: search } },
+        { senderName: { contains: search } },
+      ];
     }
 
     return prisma.shipment.findMany({

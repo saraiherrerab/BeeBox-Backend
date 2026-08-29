@@ -117,6 +117,68 @@ async function main() {
     }
   }
 
+  // Seed Destinations (Countries & Cities)
+  const countries = [
+    {
+      name: 'Venezuela',
+      code: 'VE',
+      flagEmoji: '🇻🇪',
+      cities: ['Caracas', 'Maracaibo', 'Valencia', 'Barquisimeto'],
+    },
+    {
+      name: 'Colombia',
+      code: 'CO',
+      flagEmoji: '🇨🇴',
+      cities: ['Bogotá', 'Medellín', 'Cali'],
+    },
+  ];
+
+  for (const c of countries) {
+    const country = await prisma.destinationCountry.upsert({
+      where: { name: c.name },
+      update: {},
+      create: {
+        name: c.name,
+        code: c.code,
+        flagEmoji: c.flagEmoji,
+      },
+    });
+
+    for (const cityName of c.cities) {
+      let city = await prisma.destinationCity.findFirst({
+        where: { countryId: country.id, name: cityName },
+      });
+
+      if (!city) {
+        city = await prisma.destinationCity.create({
+          data: {
+            countryId: country.id,
+            name: cityName,
+          },
+        });
+      }
+
+      const destCityStr = `${cityName}, ${country.name}`;
+      const existingRoute = await prisma.route.findFirst({
+        where: { destCity: destCityStr },
+      });
+
+      if (!existingRoute) {
+        await prisma.route.create({
+          data: {
+            name: `Ruta ${cityName}, ${country.code}`,
+            originCity: 'Broken Arrow, OK',
+            destCity: destCityStr,
+            countryId: country.id,
+            cityId: city.id,
+            status: 'ACTIVA',
+          },
+        });
+      }
+    }
+  }
+  console.log('🌍 Países y Ciudades de destino sembrados.');
+
   console.log('✅ Siembra completada con éxito.');
 }
 

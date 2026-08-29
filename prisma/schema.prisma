@@ -28,21 +28,22 @@ model User {
 }
 
 model Shipment {
-  trackingCode      String   @id
-  userId            String?
-  user              User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  senderName        String
-  senderCity        String
-  recipientName     String
-  recipientCity     String
-  recipientAddress  String
-  serviceType       String
-  weightKg          Float
-  dimensions        String
-  estimatedDelivery String
-  currentStatus     String   @default("En el origen")
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  trackingCode            String   @id
+  providerWarehouseReceipt String?
+  userId                  String?
+  user                    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  senderName              String
+  senderCity              String
+  recipientName           String
+  recipientCity           String
+  recipientAddress        String
+  serviceType             String
+  weightKg                Float
+  dimensions              String
+  estimatedDelivery       String
+  currentStatus           String   @default("En el origen")
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   events        TrackingEvent[]
   prealerta     Prealerta?
@@ -72,21 +73,22 @@ model TrackingEvent {
 }
 
 model Prealerta {
-  id              String    @id @default(uuid())
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  store           String
-  trackingNumber  String
-  description     String
-  amountPaid      Float
-  receiptFileName String?
-  destination     String?   @default("Caracas, Venezuela")
-  status          String    @default("Prealertado")
-  warehouseGuide  String?
-  shipmentId      String?   @unique
-  shipment        Shipment? @relation(fields: [shipmentId], references: [trackingCode], onDelete: SetNull)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                      String    @id @default(uuid())
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store                   String
+  trackingNumber          String
+  providerWarehouseReceipt String?
+  description             String
+  amountPaid              Float
+  receiptFileName         String?
+  destination             String?   @default("Caracas, Venezuela")
+  status                  String    @default("Prealertado")
+  warehouseGuide          String?
+  shipmentId              String?   @unique
+  shipment                Shipment? @relation(fields: [shipmentId], references: [trackingCode], onDelete: SetNull)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 }
 
 model FleetVehicle {
@@ -144,26 +146,64 @@ model BranchPickup {
   updatedAt     DateTime  @updatedAt
 }
 
+model DestinationCountry {
+  id        String            @id @default(uuid())
+  name      String            @unique
+  code      String?
+  flagEmoji String?           @default("🌐")
+  active    Boolean           @default(true)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  cities    DestinationCity[]
+  rates     RateConfig[]
+  routes    Route[]
+}
+
+model DestinationCity {
+  id        String             @id @default(uuid())
+  countryId String
+  country   DestinationCountry @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  name      String
+  active    Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  rates     RateConfig[]
+  routes    Route[]
+}
+
 model Route {
-  id         String        @id @default(uuid())
+  id         String              @id @default(uuid())
   name       String
   originCity String
   destCity   String
+  countryId  String?
+  country    DestinationCountry? @relation(fields: [countryId], references: [id], onDelete: SetNull)
+  cityId     String?
+  city       DestinationCity?    @relation(fields: [cityId], references: [id], onDelete: SetNull)
   vehicleId  String?
-  vehicle    FleetVehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  status     String        @default("ACTIVA")
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  vehicle    FleetVehicle?       @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  status     String              @default("ACTIVA")
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
 }
 
 model RateConfig {
-  id            String   @id @default(uuid())
-  serviceType   String   @unique
-  basePrice     Float
-  pricePerKg    Float
-  insuranceRate Float    @default(0.02)
-  active        Boolean  @default(true)
-  updatedAt     DateTime @updatedAt
+  id                String              @id @default(uuid())
+  serviceType       String
+  countryId         String?
+  country           DestinationCountry? @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  cityId            String?
+  city              DestinationCity?    @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  basePrice         Float
+  pricePerKg        Float
+  pricePerCubicFeet Float               @default(0.0)
+  insuranceRate     Float               @default(0.02)
+  estimatedDaysMin  Int                 @default(3)
+  estimatedDaysMax  Int                 @default(5)
+  active            Boolean             @default(true)
+  updatedAt         DateTime            @updatedAt
 }
 
 model CMSContent {
