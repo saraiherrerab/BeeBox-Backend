@@ -6,7 +6,7 @@ const pickupService = new PickupService();
 
 export async function getPickupsController(req: AuthenticatedRequest, res: Response) {
   try {
-    const isRoleAdmin = req.user?.role === 'admin';
+    const isRoleAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
     const userId = req.user?.userId;
 
     const pickups = await pickupService.getPickups(userId, isRoleAdmin);

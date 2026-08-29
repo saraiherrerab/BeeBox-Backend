@@ -3,9 +3,22 @@ import { NotificationService } from './notification.service.js';
 
 const notificationService = new NotificationService();
 
+function normalizeRole(role?: string): string {
+  if (!role) return 'client';
+  const lower = role.toLowerCase();
+  if (lower === 'super_admin') return 'super_admin';
+  if (lower === 'admin') return 'admin';
+  return 'client';
+}
+
 export class UserService {
   async getAllUsers() {
     const users = await prisma.user.findMany({
+      where: {
+        role: {
+          notIn: ['admin', 'super_admin', 'ADMIN', 'SUPER_ADMIN'],
+        },
+      },
       select: {
         id: true,
         name: true,
@@ -31,7 +44,7 @@ export class UserService {
 
     return users.map((u) => ({
       ...u,
-      role: (u.role && u.role.toLowerCase() === 'admin') ? 'admin' : 'client',
+      role: 'client',
       phone: u.phone || '',
       suiteCode: u.suiteCode || '',
       active: u.active ?? true,
@@ -66,7 +79,7 @@ export class UserService {
 
     return {
       ...user,
-      role: (user.role && user.role.toLowerCase() === 'admin') ? 'admin' : 'client',
+      role: normalizeRole(user.role),
       phone: user.phone || '',
       suiteCode: user.suiteCode || '',
       active: user.active ?? true,
@@ -97,7 +110,7 @@ export class UserService {
 
     return {
       ...updated,
-      role: (updated.role && updated.role.toLowerCase() === 'admin') ? 'admin' : 'client',
+      role: normalizeRole(updated.role),
       phone: updated.phone || '',
       suiteCode: updated.suiteCode || '',
       active: updated.active ?? true,
@@ -106,7 +119,7 @@ export class UserService {
   }
 
   async updateUserRole(id: string, role: string) {
-    const normalizedRole = role.toLowerCase() === 'admin' ? 'admin' : 'client';
+    const normalizedRole = normalizeRole(role);
     const updated = await prisma.user.update({
       where: { id },
       data: { role: normalizedRole },
@@ -126,7 +139,7 @@ export class UserService {
 
     return {
       ...updated,
-      role: (updated.role && updated.role.toLowerCase() === 'admin') ? 'admin' : 'client',
+      role: normalizeRole(updated.role),
       phone: updated.phone || '',
       suiteCode: updated.suiteCode || '',
       active: updated.active ?? true,
@@ -167,7 +180,7 @@ export class UserService {
 
     return {
       ...updated,
-      role: (updated.role && updated.role.toLowerCase() === 'admin') ? 'admin' : 'client',
+      role: normalizeRole(updated.role),
       phone: updated.phone || '',
       suiteCode: updated.suiteCode || '',
       active: updated.active,

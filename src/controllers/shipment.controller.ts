@@ -22,7 +22,7 @@ export async function getShipmentByCode(req: Request, res: Response, next: NextF
 export async function getAllShipments(req: Request, res: Response, next: NextFunction) {
   try {
     const authReq = req as any;
-    const isRoleAdmin = authReq.user?.role === 'admin';
+    const isRoleAdmin = authReq.user?.role === 'admin' || authReq.user?.role === 'super_admin';
     const userId = authReq.user?.userId;
 
     const shipments = await shipmentService.getAll(userId, isRoleAdmin);

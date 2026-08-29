@@ -6,7 +6,7 @@ const retiroService = new RetiroService();
 
 export async function getRetirosController(req: AuthenticatedRequest, res: Response) {
   try {
-    const isRoleAdmin = req.user?.role === 'admin';
+    const isRoleAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
     const userId = req.user?.userId;
 
     const retiros = await retiroService.getRetiros(userId, isRoleAdmin);

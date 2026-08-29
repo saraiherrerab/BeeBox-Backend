@@ -19,6 +19,14 @@ export function validatePassword(password: string): void {
   }
 }
 
+function normalizeRole(role?: string): 'client' | 'admin' | 'super_admin' {
+  if (!role) return 'client';
+  const lower = role.toLowerCase();
+  if (lower === 'super_admin') return 'super_admin';
+  if (lower === 'admin') return 'admin';
+  return 'client';
+}
+
 export class AuthService {
   async register(data: {
     name: string;
@@ -52,9 +60,10 @@ export class AuthService {
     });
 
     const userRecord = user as any;
+    const roleString = normalizeRole(user.role);
 
     const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role.toLowerCase() },
+      { userId: user.id, email: user.email, role: roleString },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -67,7 +76,7 @@ export class AuthService {
         email: user.email,
         phone: user.phone || '',
         suiteCode: user.suiteCode || '',
-        role: user.role.toLowerCase() as 'client' | 'admin',
+        role: roleString,
         active: userRecord.active ?? true,
       },
     };
@@ -88,7 +97,7 @@ export class AuthService {
     }
 
     const userRecord = user as any;
-    const roleString = (user.role && user.role.toUpperCase() === 'ADMIN') ? 'admin' : 'client';
+    const roleString = normalizeRole(user.role);
 
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: roleString },
@@ -104,9 +113,9 @@ export class AuthService {
         email: user.email,
         phone: user.phone || '',
         suiteCode: user.suiteCode || '',
-        role: roleString as 'client' | 'admin',
+        role: roleString,
         active: userRecord.active ?? true,
-        ...(roleString === 'admin' ? { disabledReason: userRecord.disabledReason || null } : {}),
+        ...(roleString !== 'client' ? { disabledReason: userRecord.disabledReason || null } : {}),
       },
     };
   }
@@ -119,7 +128,7 @@ export class AuthService {
     if (!user) return null;
 
     const userRecord = user as any;
-    const roleString = (user.role && user.role.toUpperCase() === 'ADMIN') ? 'admin' : 'client';
+    const roleString = normalizeRole(user.role);
 
     return {
       id: user.id,
@@ -127,9 +136,9 @@ export class AuthService {
       email: user.email,
       phone: user.phone || '',
       suiteCode: user.suiteCode || '',
-      role: roleString as 'client' | 'admin',
+      role: roleString,
       active: userRecord.active ?? true,
-      ...(roleString === 'admin' ? { disabledReason: userRecord.disabledReason || null } : {}),
+      ...(roleString !== 'client' ? { disabledReason: userRecord.disabledReason || null } : {}),
     };
   }
 

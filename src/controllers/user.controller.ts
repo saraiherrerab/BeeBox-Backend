@@ -17,7 +17,7 @@ export async function getUserByIdController(req: AuthenticatedRequest, res: Resp
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
-    if (req.user?.role !== 'admin' && req.user?.userId !== id) {
+    if (req.user?.role !== 'admin' && req.user?.role !== 'super_admin' && req.user?.userId !== id) {
       res.status(403).json({ error: true, message: 'No tienes permiso para ver este usuario.' });
       return;
     }
@@ -39,7 +39,7 @@ export async function updateUserController(req: AuthenticatedRequest, res: Respo
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const { name, phone } = req.body;
 
-    if (req.user?.role !== 'admin' && req.user?.userId !== id) {
+    if (req.user?.role !== 'admin' && req.user?.role !== 'super_admin' && req.user?.userId !== id) {
       res.status(403).json({ error: true, message: 'No tienes permiso para modificar este usuario.' });
       return;
     }
@@ -72,6 +72,11 @@ export async function updateUserStatusController(req: AuthenticatedRequest, res:
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const { active, disabledReason } = req.body;
+
+    if (req.user?.userId === id) {
+      res.status(400).json({ error: true, message: 'Un usuario administrativo no puede inhabilitar su propia cuenta.' });
+      return;
+    }
 
     if (typeof active !== 'boolean') {
       res.status(400).json({ error: true, message: 'El campo active debe ser booleano (true o false).' });
