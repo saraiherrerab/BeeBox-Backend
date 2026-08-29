@@ -2,6 +2,29 @@ import prisma from '../config/db.js';
 
 export class RateService {
   async getRates(query?: { countryId?: string; cityId?: string }) {
+    // 1. Obtener o sembrar siempre las tarifas globales por defecto para todas las modalidades
+    let globalRates = await prisma.rateConfig.findMany({
+      where: { active: true, countryId: null, cityId: null },
+      orderBy: { serviceType: 'asc' },
+    });
+
+    if (globalRates.length === 0) {
+      const defaultRates = [
+        { serviceType: 'Aéreo Express', basePrice: 25.0, pricePerKg: 8.5, insuranceRate: 0.02, estimatedDaysMin: 2, estimatedDaysMax: 4 },
+        { serviceType: 'Aéreo Estándar', basePrice: 15.0, pricePerKg: 5.5, insuranceRate: 0.02, estimatedDaysMin: 5, estimatedDaysMax: 7 },
+        { serviceType: 'Marítimo', basePrice: 10.0, pricePerKg: 3.0, insuranceRate: 0.02, estimatedDaysMin: 15, estimatedDaysMax: 25 },
+      ];
+
+      for (const r of defaultRates) {
+        await prisma.rateConfig.create({ data: r });
+      }
+
+      globalRates = await prisma.rateConfig.findMany({
+        where: { active: true, countryId: null, cityId: null },
+        orderBy: { serviceType: 'asc' },
+      });
+    }
+
     const isTargetingDestination = !!(query?.countryId || query?.cityId);
 
     if (isTargetingDestination) {
@@ -14,34 +37,25 @@ export class RateService {
         orderBy: { serviceType: 'asc' },
       });
 
-      if (customRates.length > 0) {
-        return { rates: customRates, isCustom: true };
-      }
+      const standardServices = ['Aéreo Express', 'Aéreo Estándar', 'Marítimo'];
+      
+      const mergedRates = standardServices.map((serviceName) => {
+        const custom = customRates.find((cr) => cr.serviceType === serviceName);
+        if (custom) {
+          return { ...custom, isServiceCustom: true };
+        }
+        const globalFallback = globalRates.find((gr) => gr.serviceType === serviceName);
+        return { ...(globalFallback || {}), isServiceCustom: false };
+      });
+
+      return {
+        rates: mergedRates,
+        isCustom: customRates.length > 0,
+      };
     }
 
-    // Si no hay tarifas personalizadas o se solicitó global, buscar globales
-    const globalRates = await prisma.rateConfig.findMany({
-      where: { active: true, countryId: null, cityId: null },
-      orderBy: { serviceType: 'asc' },
-    });
-
-    // Si la tabla está vacía para tarifas globales, sembrar por defecto
-    if (globalRates.length === 0) {
-      const defaultRates = [
-        { serviceType: 'Aéreo Express', basePrice: 25.0, pricePerKg: 8.5, insuranceRate: 0.02, estimatedDaysMin: 2, estimatedDaysMax: 4 },
-        { serviceType: 'Aéreo Estándar', basePrice: 15.0, pricePerKg: 5.5, insuranceRate: 0.02, estimatedDaysMin: 5, estimatedDaysMax: 7 },
-        { serviceType: 'Marítimo', basePrice: 10.0, pricePerKg: 3.0, insuranceRate: 0.02, estimatedDaysMin: 15, estimatedDaysMax: 25 },
-      ];
-
-      for (const r of defaultRates) {
-        await prisma.rateConfig.create({ data: r });
-      }
-
-      const seeded = await prisma.rateConfig.findMany({ where: { active: true, countryId: null, cityId: null }, orderBy: { serviceType: 'asc' } });
-      return { rates: seeded, isCustom: false };
-    }
-
-    return { rates: globalRates, isCustom: false };
+    const ratesWithFlag = globalRates.map((r) => ({ ...r, isServiceCustom: false }));
+    return { rates: ratesWithFlag, isCustom: false };
   }
 
   async deleteCustomRates(query: { countryId?: string; cityId?: string }) {
