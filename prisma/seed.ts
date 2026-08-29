@@ -7,33 +7,48 @@ async function main() {
   console.log('🌱 Iniciando la siembra de datos de prueba (Usuarios, Envíos y Flota)...');
 
   // Seed Users con contraseñas seguras (letra, número, especial, >= 8 chars)
-  const adminPasswordHash = await bcrypt.hash('Admin123!', 10);
-  const clientPasswordHash = await bcrypt.hash('Cliente123!', 10);
+  const superAdminPasswordHash = await bcrypt.hash('SuperAdmin2026!', 10);
+  const adminPasswordHash = await bcrypt.hash('AdminPass2026!', 10);
+  const clientPasswordHash = await bcrypt.hash('ClientPass2026!', 10);
+
+  const superAdmin = await prisma.user.upsert({
+    where: { email: 'superadmin@beebox.com' },
+    update: { password: superAdminPasswordHash, role: 'super_admin' },
+    create: {
+      name: 'Super Admin Principal',
+      email: 'superadmin@beebox.com',
+      password: superAdminPasswordHash,
+      phone: '+56 9 8765 4321',
+      role: 'super_admin',
+      suiteCode: 'CAS-SUPER-HQ',
+    },
+  });
+  console.log(`👤 Usuario Super Admin creado: ${superAdmin.email}`);
 
   const admin = await prisma.user.upsert({
     where: { email: 'admin@beebox.com' },
-    update: {},
+    update: { password: adminPasswordHash, role: 'admin' },
     create: {
-      name: 'Admin Principal',
+      name: 'Administrador Operativo',
       email: 'admin@beebox.com',
       password: adminPasswordHash,
       phone: '+56 9 1234 5678',
-      role: 'ADMIN',
+      role: 'admin',
       suiteCode: 'CAS-ADMIN-HUB',
     },
   });
   console.log(`👤 Usuario Admin creado: ${admin.email}`);
 
   const client = await prisma.user.upsert({
-    where: { email: 'juan.perez@beebox.com' },
-    update: {},
+    where: { email: 'sarai.herrera@beebox.com' },
+    update: { password: clientPasswordHash, role: 'client' },
     create: {
-      name: 'Juan Pérez',
-      email: 'juan.perez@beebox.com',
+      name: 'Sarai Herrera',
+      email: 'sarai.herrera@beebox.com',
       password: clientPasswordHash,
       phone: '+52 55 9876 5432',
-      role: 'CLIENT',
-      suiteCode: 'CAS-88293-MIAMI',
+      role: 'client',
+      suiteCode: 'CAS-77382-MIAMI',
     },
   });
   console.log(`👤 Usuario Cliente creado: ${client.email}`);

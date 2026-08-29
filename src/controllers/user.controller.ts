@@ -90,3 +90,32 @@ export async function updateUserStatusController(req: AuthenticatedRequest, res:
     res.status(500).json({ error: true, message: error.message || 'Error al actualizar estado del usuario.' });
   }
 }
+
+export async function getAdminUsersController(req: AuthenticatedRequest, res: Response) {
+  try {
+    const admins = await userService.getAdminUsers();
+    res.json({ success: true, admins });
+  } catch (error: any) {
+    res.status(500).json({ error: true, message: error.message || 'Error al obtener administradores.' });
+  }
+}
+
+export async function createAdminUserController(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { name, email, password, phone } = req.body;
+    if (!name || !email || !password) {
+      res.status(400).json({ error: true, message: 'Faltan parámetros requeridos: name, email, password.' });
+      return;
+    }
+
+    if (password.length < 8) {
+      res.status(400).json({ error: true, message: 'La contraseña debe tener al menos 8 caracteres.' });
+      return;
+    }
+
+    const newAdmin = await userService.createAdminUser({ name, email, password, phone });
+    res.status(201).json({ success: true, admin: newAdmin, message: 'Administrador registrado exitosamente.' });
+  } catch (error: any) {
+    res.status(400).json({ error: true, message: error.message || 'Error al crear administrador.' });
+  }
+}
