@@ -26,13 +26,25 @@ export class MetricsService {
       },
     });
 
-    const activeShipments = await prisma.shipment.count({
-      where: {
-        currentStatus: {
-          notIn: ['entregado', 'ENTREGADO', 'Llegó a su destino'],
-        },
+    const allShipments = await prisma.shipment.findMany({
+      select: {
+        currentStatus: true,
       },
     });
+
+    const dbActiveShipments = allShipments.filter((s) => {
+      const st = (s.currentStatus || '').toLowerCase();
+      return !st.includes('destino') && !st.includes('entregado');
+    }).length;
+
+    const confirmedPrealertasWithoutShipment = await prisma.prealerta.count({
+      where: {
+        status: { in: ['Confirmado', 'confirmado', 'Vinculado', 'vinculado'] },
+        shipmentId: null,
+      },
+    });
+
+    const activeShipments = dbActiveShipments + confirmedPrealertasWithoutShipment;
 
     const prealertasTotal = await prisma.prealerta.aggregate({
       _sum: {
