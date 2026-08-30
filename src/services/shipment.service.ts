@@ -46,6 +46,64 @@ export class ShipmentService {
   }
 
   async getAll(userId?: string, isRoleAdmin?: boolean, search?: string) {
+    // Auto-sincronizar: asegurar que toda prealerta confirmada tenga un registro Shipment en la base de datos
+    try {
+      const confirmedWithoutShipment = await prisma.prealerta.findMany({
+        where: {
+          status: { in: ['Confirmado', 'Vinculado'] },
+          shipmentId: null,
+        },
+        include: { user: true },
+      });
+
+      for (const p of confirmedWithoutShipment) {
+        const guideCode = p.warehouseGuide || `BBX-${Math.floor(10000 + Math.random() * 90000)}`;
+        let existingShipment = await prisma.shipment.findUnique({
+          where: { trackingCode: guideCode },
+        });
+
+        if (!existingShipment) {
+          existingShipment = await prisma.shipment.create({
+            data: {
+              trackingCode: guideCode,
+              providerWarehouseReceipt: p.providerWarehouseReceipt || null,
+              userId: p.userId,
+              senderName: p.store || 'Oklahoma Warehouse',
+              senderCity: 'Broken Arrow, OK',
+              recipientName: p.user?.name || 'Cliente BeeBox',
+              recipientCity: p.destination || 'Caracas, Venezuela',
+              recipientAddress: 'Dirección Registrada del Cliente',
+              serviceType: 'Aéreo Exprés Internacional',
+              weightKg: 1.0,
+              dimensions: '25x20x15 cm',
+              estimatedDelivery: '3-5 días hábiles',
+              currentStatus: 'En el origen',
+            },
+          });
+
+          await prisma.trackingEvent.create({
+            data: {
+              shipmentId: guideCode,
+              location: 'Almacén Central - Broken Arrow, OK',
+              status: 'En el origen',
+              title: 'Paquete Recibido y Confirmado en Almacén',
+              description: `El paquete proveniente de ${p.store} fue recibido y confirmado en el almacén de origen.`,
+            },
+          });
+        }
+
+        await prisma.prealerta.update({
+          where: { id: p.id },
+          data: {
+            warehouseGuide: guideCode,
+            shipmentId: existingShipment.trackingCode,
+          },
+        });
+      }
+    } catch (err) {
+      console.error('Error auto-sincronizando prealertas a envíos:', err);
+    }
+
     const whereClause: any = {};
     if (!isRoleAdmin && userId) {
       whereClause.userId = userId;
