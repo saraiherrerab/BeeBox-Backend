@@ -32,6 +32,7 @@ export async function createPickupController(req: AuthenticatedRequest, res: Res
       boxCount,
       totalWeightKg,
       containElectronics,
+      containLithium,
       recipientName,
       recipientPhone,
       recipientAddress,
@@ -53,6 +54,7 @@ export async function createPickupController(req: AuthenticatedRequest, res: Res
       boxCount: boxCount || 1,
       totalWeightKg: totalWeightKg || 1.0,
       containElectronics: Boolean(containElectronics),
+      containLithium: Boolean(containLithium),
       recipientName,
       recipientPhone: recipientPhone || '',
       recipientAddress,
@@ -70,9 +72,27 @@ export async function createPickupController(req: AuthenticatedRequest, res: Res
 export async function updatePickupController(req: AuthenticatedRequest, res: Response) {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { status, vehicleId } = req.body;
+    const {
+      status,
+      vehicleId,
+      warehouseGuide,
+      estimatedDelivery,
+      verifiedWeight,
+      verifiedDimensions,
+      verifiedBoxes,
+      inspectionNotes,
+    } = req.body;
 
-    const updated = await pickupService.updatePickup(id, { status, vehicleId });
+    const updated = await pickupService.updatePickup(id, {
+      status,
+      vehicleId,
+      warehouseGuide,
+      estimatedDelivery,
+      verifiedWeight,
+      verifiedDimensions,
+      verifiedBoxes,
+      inspectionNotes,
+    });
     res.json({ success: true, pickup: updated, message: 'Solicitud de pickup actualizada correctamente.' });
   } catch (error: any) {
     res.status(500).json({ error: true, message: error.message || 'Error al actualizar pickup.' });

@@ -13,6 +13,7 @@ export class ShipmentService {
         events: {
           orderBy: { timestamp: 'desc' },
         },
+        pickup: true,
       },
     });
 
@@ -34,6 +35,8 @@ export class ShipmentService {
       dimensions: shipment.dimensions,
       estimatedDelivery: shipment.estimatedDelivery,
       currentStatus: shipment.currentStatus,
+      hasPickup: shipment.hasPickup,
+      pickup: shipment.pickup,
       events: shipment.events.map((evt: TrackingEvent) => ({
         id: evt.id,
         timestamp: evt.timestamp.toISOString(),
@@ -125,6 +128,7 @@ export class ShipmentService {
         events: { orderBy: { timestamp: 'desc' } },
         user: { select: { id: true, name: true, email: true, suiteCode: true } },
         prealerta: true,
+        pickup: true,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -142,18 +146,29 @@ export class ShipmentService {
     weightKg: number;
     dimensions: string;
     estimatedDelivery: string;
+    currentStatus?: string;
+    hasPickup?: boolean;
+    pickupId?: string;
   }) {
+    const status = data.currentStatus || 'En el origen';
+    const isPickup = Boolean(data.hasPickup || status === 'Pick up en proceso');
+
     const shipment = await prisma.shipment.create({
       data: {
         ...data,
-        currentStatus: 'En el origen',
+        currentStatus: status,
+        hasPickup: isPickup,
+        pickupId: data.pickupId || null,
         events: {
           create: [
             {
               location: data.senderCity,
-              status: 'En el origen',
-              title: 'Recibido en Origen',
-              description: 'El envío ha sido ingresado en el almacén de origen.',
+              status: status,
+              title: status === 'Pick up en proceso' ? 'Pick up en Proceso' : 'Recibido en Origen',
+              description:
+                status === 'Pick up en proceso'
+                  ? 'Recolección a domicilio programada en la dirección del cliente.'
+                  : 'El envío ha sido ingresado en el almacén de origen.',
             },
           ],
         },
@@ -164,9 +179,9 @@ export class ShipmentService {
     if (data.userId) {
       await notificationService.createNotification(
         data.userId,
-        'Envío Creado / Recibido en Origen',
-        `Tu paquete con guía ${data.trackingCode} ha sido recibido en el almacén de origen.`,
-        'origen'
+        status === 'Pick up en proceso' ? 'Pickup Programado' : 'Envío Creado / Recibido en Origen',
+        `Tu paquete con guía ${data.trackingCode} se encuentra en estado: ${status}.`,
+        status === 'Pick up en proceso' ? 'pickup' : 'origen'
       );
     }
 
@@ -193,14 +208,17 @@ export class ShipmentService {
           create: event,
         },
       },
-      include: { events: true },
+      include: { events: true, pickup: true },
     });
 
     if (updatedShipment.userId) {
       let notifTitle = `Actualización de Envío (${event.status})`;
       let notifType = 'info';
 
-      if (event.status === 'En el origen') {
+      if (event.status === 'Pick up en proceso') {
+        notifTitle = 'Pick up en Proceso';
+        notifType = 'pickup';
+      } else if (event.status === 'En el origen') {
         notifTitle = 'Recibido en Origen';
         notifType = 'origen';
       } else if (event.status === 'En camino') {
@@ -232,7 +250,11 @@ export class ShipmentService {
     let description = `El estado del paquete con guía ${trackingCode} ha sido actualizado a: ${status}.`;
     let location = 'Almacén / Tránsito';
 
-    if (status === 'En el origen') {
+    if (status === 'Pick up en proceso') {
+      title = 'Pick up en Proceso';
+      description = `Se ha programado la recolección a domicilio del paquete en la dirección del remitente.`;
+      location = 'Domicilio del Remitente';
+    } else if (status === 'En el origen') {
       title = 'Recibido en Origen';
       description = `El paquete ha sido ingresado y preparado en el almacén de origen (Broken Arrow, OK).`;
       location = 'Broken Arrow, OK';

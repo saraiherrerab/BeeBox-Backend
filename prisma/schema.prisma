@@ -42,6 +42,9 @@ model Shipment {
   dimensions              String
   estimatedDelivery       String
   currentStatus           String   @default("En el origen")
+  hasPickup               Boolean  @default(false)
+  pickupId                String?  @unique
+  pickup                  Pickup?  @relation(fields: [pickupId], references: [id], onDelete: SetNull)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
@@ -117,6 +120,7 @@ model Pickup {
   boxCount           Int           @default(1)
   totalWeightKg      Float         @default(1.0)
   containElectronics Boolean       @default(false)
+  containLithium     Boolean       @default(false)
   recipientName      String
   recipientPhone     String
   recipientAddress   String
@@ -126,6 +130,7 @@ model Pickup {
   vehicleId          String?
   vehicle            FleetVehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   status             String        @default("PENDIENTE")
+  shipment           Shipment?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 }
