@@ -137,20 +137,34 @@ export class PickupService {
       },
     });
 
-    // Si el operativo confirma o asigna el pickup (CONFIRMADO, EN RUTA o APROBADO) y aún no existe el Shipment, se crea el envío oficial:
-    const isConfirmation =
+    // Si el operativo confirma o asigna el pickup (EN_PROCESO, CONFIRMADO, EN RUTA o APROBADO) y aún no existe el Shipment:
+    const isEnProceso =
+      data.status === 'EN_PROCESO' ||
       data.status === 'CONFIRMADO' ||
       data.status === 'EN RUTA' ||
       data.status === 'APROBADO';
 
+    const isCompletadoEnOrigen =
+      data.status === 'COMPLETADO' ||
+      data.status === 'EN_ORIGEN' ||
+      data.status === 'RECOLECTADO' ||
+      data.status === 'RECIBIDO_ALMACEN';
+
     const finalWeight = data.verifiedWeight ? Number(data.verifiedWeight) : (current.totalWeightKg || 1.0);
     const finalBoxes = data.verifiedBoxes ? Number(data.verifiedBoxes) : (current.boxCount || 1);
     const finalDimensions = data.verifiedDimensions || `${finalBoxes} caja(s) (30x20x15 cm)`;
+    const guide = data.warehouseGuide || current.pickupCode;
+    const vehicleName = updated.vehicle?.name || 'Unidad de Flota Asignada';
 
-    if (isConfirmation && !current.shipment) {
+    if (!current.shipment && (isEnProceso || isCompletadoEnOrigen)) {
       try {
-        const guide = data.warehouseGuide || current.pickupCode;
-        const vehicleName = updated.vehicle?.name || 'Unidad de Flota Asignada';
+        const initialStatus = isCompletadoEnOrigen ? 'En el origen' : 'Pick up en proceso';
+        const initialEventTitle = isCompletadoEnOrigen
+          ? 'Paquete Recolectado e Ingresado en Almacén'
+          : 'Recolección a Domicilio Asignada y en Proceso';
+        const initialEventDesc = isCompletadoEnOrigen
+          ? `El paquete fue recolectado en domicilio por ${vehicleName} e ingresado al almacén de origen para su posterior envío. Peso: ${finalWeight} kg (${finalDimensions}). ${data.inspectionNotes ? `Inspección: ${data.inspectionNotes}` : ''}`
+          : `Solicitud asignada a ${vehicleName} para recolección en domicilio (${current.pickupDate} - ${current.timeSlot}). Peso: ${finalWeight} kg (${finalDimensions}). ${data.inspectionNotes ? `Inspección: ${data.inspectionNotes}` : ''}`;
 
         const shipment = await prisma.shipment.create({
           data: {
@@ -165,16 +179,16 @@ export class PickupService {
             weightKg: finalWeight,
             dimensions: finalDimensions,
             estimatedDelivery: data.estimatedDelivery || '3-5 días hábiles',
-            currentStatus: 'Pick up en proceso',
+            currentStatus: initialStatus,
             hasPickup: true,
             pickupId: current.id,
             events: {
               create: [
                 {
                   location: `${current.senderAddress}, ${current.senderCity || 'Ciudad de Origen'}`,
-                  status: 'Pick up en proceso',
-                  title: 'Recolección a Domicilio Programada y Auditada',
-                  description: `Solicitud aprobada por operaciones. Peso verificado: ${finalWeight} kg (${finalDimensions}). ${vehicleName} programado para recolección (${current.pickupDate} - ${current.timeSlot}). ${data.inspectionNotes ? `Inspección: ${data.inspectionNotes}` : ''}`,
+                  status: initialStatus,
+                  title: initialEventTitle,
+                  description: initialEventDesc,
                 },
               ],
             },
@@ -183,7 +197,7 @@ export class PickupService {
 
         emitSocketEvent('shipment:updated', shipment);
       } catch (err) {
-        console.error('Error al crear envío desde confirmación de pickup:', err);
+        console.error('Error al crear envío desde pickup:', err);
       }
     } else if (current.shipment) {
       // Si el shipment ya existe, actualizar sus dimensiones, peso y estado si corresponde
@@ -192,7 +206,7 @@ export class PickupService {
         if (data.verifiedDimensions) updateShipmentData.dimensions = data.verifiedDimensions;
         if (data.verifiedWeight) updateShipmentData.weightKg = Number(data.verifiedWeight);
 
-        if (data.status === 'RECOLECTADO' || data.status === 'RECIBIDO_ALMACEN') {
+        if (isCompletadoEnOrigen) {
           updateShipmentData.currentStatus = 'En el origen';
         }
 
@@ -201,14 +215,14 @@ export class PickupService {
           data: updateShipmentData,
         });
 
-        if (data.status === 'RECOLECTADO' || data.status === 'RECIBIDO_ALMACEN') {
+        if (isCompletadoEnOrigen && current.shipment.currentStatus !== 'En el origen') {
           await prisma.trackingEvent.create({
             data: {
               shipmentId: current.shipment.trackingCode,
               location: 'Almacén Central',
               status: 'En el origen',
               title: 'Paquete Recolectado e Ingresado en Almacén',
-              description: `El paquete fue retirado en el domicilio del remitente e ingresado al almacén de origen. Peso: ${finalWeight} kg (${finalDimensions}). ${data.inspectionNotes ? `Inspección: ${data.inspectionNotes}` : ''}`,
+              description: `El paquete fue recolectado en domicilio por ${vehicleName} e ingresado al almacén de origen para su posterior despacho. Peso: ${finalWeight} kg (${finalDimensions}). ${data.inspectionNotes ? `Inspección: ${data.inspectionNotes}` : ''}`,
             },
           });
         }
