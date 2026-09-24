@@ -30,15 +30,20 @@ export async function createPickupController(req: AuthenticatedRequest, res: Res
       senderAddress,
       senderCity,
       boxCount,
+      boxes,
       totalWeightKg,
       containElectronics,
+      electronicsDetails,
+      electronicsDeclaredValue,
       containLithium,
       recipientName,
       recipientPhone,
+      recipientPhone2,
       recipientAddress,
       recipientCity,
       pickupDate,
       timeSlot,
+      notes,
     } = req.body;
 
     if (!senderName || !senderAddress || !recipientName || !recipientAddress || !pickupDate) {
@@ -46,17 +51,21 @@ export async function createPickupController(req: AuthenticatedRequest, res: Res
       return;
     }
 
+    const finalRecipientPhone = recipientPhone2 && !recipientPhone?.includes(recipientPhone2)
+      ? `${recipientPhone} / ${recipientPhone2}`
+      : (recipientPhone || '');
+
     const pickup = await pickupService.createPickup(userId, {
       senderName,
       senderPhone: senderPhone || '',
       senderAddress,
       senderCity: senderCity || 'Ciudad de Origen',
-      boxCount: boxCount || 1,
+      boxCount: boxCount || (Array.isArray(boxes) ? boxes.length : 1),
       totalWeightKg: totalWeightKg || 1.0,
       containElectronics: Boolean(containElectronics),
       containLithium: Boolean(containLithium),
       recipientName,
-      recipientPhone: recipientPhone || '',
+      recipientPhone: finalRecipientPhone,
       recipientAddress,
       recipientCity: recipientCity || 'Ciudad de Destino',
       pickupDate,
