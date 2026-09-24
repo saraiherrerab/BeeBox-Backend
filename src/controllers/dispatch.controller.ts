@@ -1,6 +1,23 @@
 import { Request, Response } from 'express';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware.js';
-import { warehousesStore, WarehouseItem } from './warehouse.controller.js';
+
+export interface DispatchedShipmentItem {
+  id: string;
+  trackingCode: string;
+  clientName: string;
+  clientSuite?: string;
+  recipientName: string;
+  recipientPhone?: string;
+  recipientAddress?: string;
+  destination: string;
+  serviceType?: string;
+  pieces?: number;
+  weightKg?: number;
+  declaredValue?: number;
+  contentDescription: string;
+  containElectronics?: boolean;
+  status?: string;
+}
 
 export interface GuiaSalidaItem {
   id: string;
@@ -11,8 +28,8 @@ export interface GuiaSalidaItem {
   serviceType: 'Aéreo' | 'Marítimo' | 'Terrestre';
   carrier?: string;
   status: 'EN_PREPARACION' | 'DESPACHADA' | 'EN_TRANSITO' | 'ARRIBADA' | 'COMPLETADA';
-  warehousesCount: number; // NRO de Warehouse
-  warehouses: WarehouseItem[]; // listado de ellos
+  warehousesCount: number; // NRO de Envíos / Warehouses
+  warehouses: DispatchedShipmentItem[]; // listado de ellos
   totalPieces: number;
   totalWeightKg: number;
   totalDeclaredValue: number;
@@ -36,7 +53,7 @@ export const guiasSalidaStore: GuiaSalidaItem[] = [
     warehouses: [
       {
         id: 'wh_sample_1',
-        warehouseCode: 'WR-89190',
+        trackingCode: 'BBX-89190',
         clientName: 'Carlos Zambrano',
         clientSuite: 'BBX-1090',
         recipientName: 'Sofía Zambrano',
@@ -49,13 +66,10 @@ export const guiasSalidaStore: GuiaSalidaItem[] = [
         declaredValue: 320,
         contentDescription: 'Calzado deportivo y ropa casual',
         containElectronics: false,
-        status: 'EN_GUIA_SALIDA',
-        assignedGuiaCode: 'GS-2026-001',
-        createdAt: new Date(Date.now() - 3600000 * 48).toISOString(),
       },
       {
         id: 'wh_sample_2',
-        warehouseCode: 'WR-89191',
+        trackingCode: 'BBX-89191',
         clientName: 'Daniela Morales',
         clientSuite: 'BBX-2144',
         recipientName: 'Alejandro Morales',
@@ -66,12 +80,8 @@ export const guiasSalidaStore: GuiaSalidaItem[] = [
         pieces: 1,
         weightKg: 3.1,
         declaredValue: 580,
-        contentDescription: 'Consola PlayStation 5 y mando dual',
+        contentDescription: 'Consola PlayStation 5 y accesorios',
         containElectronics: true,
-        electronicsDetails: '1 Consola PlayStation 5 Digital',
-        status: 'EN_GUIA_SALIDA',
-        assignedGuiaCode: 'GS-2026-001',
-        createdAt: new Date(Date.now() - 3600000 * 36).toISOString(),
       },
     ],
     totalPieces: 3,
@@ -107,7 +117,7 @@ export async function getGuiasSalidaController(req: Request, res: Response) {
           (g.carrier && g.carrier.toLowerCase().includes(q)) ||
           g.warehouses.some(
             (w) =>
-              w.warehouseCode.toLowerCase().includes(q) ||
+              w.trackingCode.toLowerCase().includes(q) ||
               w.contentDescription.toLowerCase().includes(q) ||
               w.recipientName.toLowerCase().includes(q)
           )
@@ -129,8 +139,7 @@ export async function createGuiaSalidaController(req: AuthenticatedRequest, res:
       departureDate,
       serviceType,
       carrier,
-      warehouseIds, // array of warehouse IDs or codes
-      warehouses: directWarehouses, // optional direct array of warehouse objects
+      warehouses: directWarehouses,
       notes,
     } = req.body;
 
@@ -147,25 +156,7 @@ export async function createGuiaSalidaController(req: AuthenticatedRequest, res:
         ? guiaCode.trim().toUpperCase()
         : `GS-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
 
-    // Resolve included warehouses
-    let selectedWarehouses: WarehouseItem[] = [];
-
-    if (Array.isArray(directWarehouses) && directWarehouses.length > 0) {
-      selectedWarehouses = directWarehouses;
-    } else if (Array.isArray(warehouseIds) && warehouseIds.length > 0) {
-      selectedWarehouses = warehousesStore.filter((w) => warehouseIds.includes(w.id) || warehouseIds.includes(w.warehouseCode));
-    }
-
-    // Mark matched warehouses in the store as EN_GUIA_SALIDA
-    for (const w of selectedWarehouses) {
-      const storeItem = warehousesStore.find((sw) => sw.id === w.id || sw.warehouseCode === w.warehouseCode);
-      if (storeItem) {
-        storeItem.status = 'EN_GUIA_SALIDA';
-        storeItem.assignedGuiaCode = generatedCode;
-      }
-      w.status = 'EN_GUIA_SALIDA';
-      w.assignedGuiaCode = generatedCode;
-    }
+    const selectedWarehouses: DispatchedShipmentItem[] = Array.isArray(directWarehouses) ? directWarehouses : [];
 
     const totalPieces = selectedWarehouses.reduce((acc, w) => acc + (w.pieces || 1), 0);
     const totalWeightKg = Number(
@@ -199,7 +190,7 @@ export async function createGuiaSalidaController(req: AuthenticatedRequest, res:
     res.status(201).json({
       success: true,
       guia: newGuia,
-      message: `Guía de Salida ${newGuia.guiaCode} creada exitosamente con ${selectedWarehouses.length} Warehouse(s).`,
+      message: `Guía de Salida ${newGuia.guiaCode} creada exitosamente con ${selectedWarehouses.length} envío(s) consolidado(s).`,
     });
   } catch (error: any) {
     res.status(500).json({ error: true, message: error.message || 'Error al crear Guía de Salida.' });
@@ -217,32 +208,10 @@ export async function updateGuiaSalidaController(req: AuthenticatedRequest, res:
     }
 
     const current = guiasSalidaStore[idx];
-    const { status, warehouses, warehouseIds, ...rest } = req.body;
+    const { status, warehouses, ...rest } = req.body;
 
-    let updatedWarehouses = current.warehouses;
-
-    if (Array.isArray(warehouses)) {
-      updatedWarehouses = warehouses;
-    } else if (Array.isArray(warehouseIds)) {
-      updatedWarehouses = warehousesStore.filter((w) => warehouseIds.includes(w.id) || warehouseIds.includes(w.warehouseCode));
-    }
-
+    const updatedWarehouses = Array.isArray(warehouses) ? warehouses : current.warehouses;
     const newStatus = status || current.status;
-
-    // Propagate status change to attached warehouses
-    if (newStatus === 'DESPACHADA' || newStatus === 'EN_TRANSITO') {
-      for (const w of updatedWarehouses) {
-        w.status = 'DESPACHADO';
-        const inStore = warehousesStore.find((sw) => sw.id === w.id || sw.warehouseCode === w.warehouseCode);
-        if (inStore) inStore.status = 'DESPACHADO';
-      }
-    } else if (newStatus === 'ARRIBADA' || newStatus === 'COMPLETADA') {
-      for (const w of updatedWarehouses) {
-        w.status = 'ENTREGADO';
-        const inStore = warehousesStore.find((sw) => sw.id === w.id || sw.warehouseCode === w.warehouseCode);
-        if (inStore) inStore.status = 'ENTREGADO';
-      }
-    }
 
     const totalPieces = updatedWarehouses.reduce((acc, w) => acc + (w.pieces || 1), 0);
     const totalWeightKg = Number(
@@ -287,17 +256,7 @@ export async function deleteGuiaSalidaController(req: AuthenticatedRequest, res:
     }
 
     const removed = guiasSalidaStore.splice(idx, 1)[0];
-
-    // Release attached warehouses back to DISPONIBLE
-    for (const w of removed.warehouses) {
-      const inStore = warehousesStore.find((sw) => sw.id === w.id || sw.warehouseCode === w.warehouseCode);
-      if (inStore && inStore.assignedGuiaCode === removed.guiaCode) {
-        inStore.status = 'DISPONIBLE';
-        inStore.assignedGuiaCode = null;
-      }
-    }
-
-    res.json({ success: true, guia: removed, message: 'Guía de Salida eliminada y Warehouses liberados.' });
+    res.json({ success: true, guia: removed, message: 'Guía de Salida eliminada.' });
   } catch (error: any) {
     res.status(500).json({ error: true, message: error.message || 'Error al eliminar Guía de Salida.' });
   }
