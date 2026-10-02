@@ -25,6 +25,8 @@ model User {
   pickups       Pickup[]
   branchPickups BranchPickup[]
   notifications Notification[]
+  savedAddresses  SavedAddress[]
+  savedRecipients SavedRecipient[]
 }
 
 model Shipment {
@@ -222,5 +224,33 @@ model CMSContent {
   createdAt   DateTime @default(now())
 }
 
+model SavedAddress {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label        String
+  address      String
+  city         String
+  contactName  String?
+  contactPhone String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
+  @@index([userId])
+}
+
+model SavedRecipient {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String
+  phone2    String?
+  address   String
+  city      String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
 
