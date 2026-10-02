@@ -14,6 +14,7 @@ import cmsRoutes from './cms.routes.js';
 import notificationRoutes from './notification.routes.js';
 import destinationRoutes from './destination.routes.js';
 import recipientRoutes from './recipient.routes.js';
+import savedAddressRoutes from './savedAddress.routes.js';
 import dispatchRoutes from './dispatch.routes.js';
 
 const apiRouter = Router();
@@ -29,6 +30,7 @@ apiRouter.use('/notifications', notificationRoutes);
 apiRouter.use('/destinations', destinationRoutes);
 apiRouter.use('/users', userRoutes);
 apiRouter.use('/recipients', recipientRoutes);
+apiRouter.use('/addresses', savedAddressRoutes);
 apiRouter.use('/guias-salida', dispatchRoutes);
 apiRouter.use('/prealertas', prealertaRoutes);
 apiRouter.use('/pickups', pickupRoutes);
