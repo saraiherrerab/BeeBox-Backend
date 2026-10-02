@@ -5,13 +5,15 @@ import {
   updateGuiaSalidaController,
   deleteGuiaSalidaController,
 } from '../controllers/dispatch.controller.js';
-import { authenticateToken } from '../middlewares/auth.middleware.js';
+import { authenticateToken, requireRole } from '../middlewares/auth.middleware.js';
 
 const dispatchRouter = Router();
 
+dispatchRouter.use(authenticateToken, requireRole(['admin']));
+
 dispatchRouter.get('/', getGuiasSalidaController);
-dispatchRouter.post('/', authenticateToken, createGuiaSalidaController);
-dispatchRouter.patch('/:id', authenticateToken, updateGuiaSalidaController);
-dispatchRouter.delete('/:id', authenticateToken, deleteGuiaSalidaController);
+dispatchRouter.post('/', createGuiaSalidaController);
+dispatchRouter.patch('/:id', updateGuiaSalidaController);
+dispatchRouter.delete('/:id', deleteGuiaSalidaController);
 
 export default dispatchRouter;

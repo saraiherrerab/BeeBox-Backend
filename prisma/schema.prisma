@@ -254,3 +254,23 @@ model SavedRecipient {
   @@index([userId])
 }
 
+
+model GuiaSalida {
+  id                 String   @id @default(uuid())
+  guiaCode           String   @unique
+  description        String
+  destination        String
+  departureDate      String
+  serviceType        String   @default("Aéreo")
+  carrier            String?
+  status             String   @default("EN_PREPARACION")
+  // Foto de los envíos consolidados al momento de armar la guía
+  warehouses         Json     @default("[]")
+  warehousesCount    Int      @default(0)
+  totalPieces        Int      @default(0)
+  totalWeightKg      Float    @default(0)
+  totalDeclaredValue Float    @default(0)
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
