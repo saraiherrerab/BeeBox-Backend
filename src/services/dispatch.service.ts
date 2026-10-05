@@ -78,7 +78,26 @@ export class DispatchService {
       throw new HttpError(409, `Ya existe una Guía de Salida con el código ${guiaCode}.`);
     }
 
-    return prisma.guiaSalida.create({
+    // Validar coincidencia de tipo de envío: solo warehouses que coincidan con la modalidad de la guía
+    const targetServiceType = (input.serviceType || 'Aéreo').toLowerCase();
+    const guiaIsAereo = targetServiceType.includes('aér') || targetServiceType.includes('aer');
+    const guiaIsMaritimo = targetServiceType.includes('marít') || targetServiceType.includes('marit');
+
+    for (const w of warehouses) {
+      const wService = String(w.serviceType || '').toLowerCase();
+      const isAereo = wService.includes('aér') || wService.includes('aer');
+      const isMaritimo = wService.includes('marít') || wService.includes('marit');
+      const code = String(w.trackingCode || w.warehouseCode || 'WR');
+
+      if (guiaIsAereo && !isAereo && isMaritimo) {
+        throw new HttpError(400, `El Warehouse ${code} es de modalidad Marítima y no puede agregarse a una Guía de Salida Aérea.`);
+      }
+      if (guiaIsMaritimo && !isMaritimo && isAereo) {
+        throw new HttpError(400, `El Warehouse ${code} es de modalidad Aérea y no puede agregarse a una Guía de Salida Marítima.`);
+      }
+    }
+
+    const guia = await prisma.guiaSalida.create({
       data: {
         guiaCode,
         description: input.description!.trim(),
@@ -91,6 +110,18 @@ export class DispatchService {
         ...computeTotals(warehouses),
       },
     });
+
+    if (input.status === 'DESPACHADA' || input.status === 'EN_TRANSITO') {
+      const codes = warehouses.map((w: any) => w.trackingCode || w.warehouseCode).filter(Boolean);
+      if (codes.length > 0) {
+        await prisma.shipment.updateMany({
+          where: { trackingCode: { in: codes } },
+          data: { currentStatus: 'En camino' },
+        });
+      }
+    }
+
+    return guia;
   }
 
   async update(idOrCode: string, input: GuiaSalidaInput) {
@@ -107,7 +138,30 @@ export class DispatchService {
       Object.assign(data, { warehouses: input.warehouses, ...computeTotals(input.warehouses) });
     }
 
-    return prisma.guiaSalida.update({ where: { id: current.id }, data: data as Prisma.GuiaSalidaUpdateInput });
+    const updated = await prisma.guiaSalida.update({ where: { id: current.id }, data: data as Prisma.GuiaSalidaUpdateInput });
+
+    // Sincronizar estado en PostgreSQL con los envíos que forman parte de la salida
+    if (input.status === 'DESPACHADA' || input.status === 'EN_TRANSITO') {
+      const items = Array.isArray(updated.warehouses) ? (updated.warehouses as any[]) : [];
+      const codes = items.map((w: any) => w.trackingCode || w.warehouseCode).filter(Boolean);
+      if (codes.length > 0) {
+        await prisma.shipment.updateMany({
+          where: { trackingCode: { in: codes } },
+          data: { currentStatus: 'En camino' },
+        });
+      }
+    } else if (input.status === 'ARRIBADA' || input.status === 'COMPLETADA') {
+      const items = Array.isArray(updated.warehouses) ? (updated.warehouses as any[]) : [];
+      const codes = items.map((w: any) => w.trackingCode || w.warehouseCode).filter(Boolean);
+      if (codes.length > 0) {
+        await prisma.shipment.updateMany({
+          where: { trackingCode: { in: codes } },
+          data: { currentStatus: 'Llegó a su destino' },
+        });
+      }
+    }
+
+    return updated;
   }
 
   async remove(idOrCode: string) {

@@ -60,7 +60,7 @@ export class ShipmentService {
       });
 
       for (const p of confirmedWithoutShipment) {
-        const guideCode = p.warehouseGuide || `BBX-${Math.floor(10000 + Math.random() * 90000)}`;
+        const guideCode = p.warehouseGuide || `WR-${Math.floor(10000 + Math.random() * 90000)}`;
         let existingShipment = await prisma.shipment.findUnique({
           where: { trackingCode: guideCode },
         });
@@ -135,7 +135,7 @@ export class ShipmentService {
   }
 
   async createShipment(data: {
-    trackingCode: string;
+    trackingCode?: string;
     userId?: string;
     senderName: string;
     senderCity: string;
@@ -145,17 +145,45 @@ export class ShipmentService {
     serviceType: string;
     weightKg: number;
     dimensions: string;
-    estimatedDelivery: string;
+    estimatedDelivery?: string;
     currentStatus?: string;
     hasPickup?: boolean;
     pickupId?: string;
+    description?: string;
+    contentDescription?: string;
+    declaredValue?: number;
+    boxCount?: number;
+    providerWarehouseReceipt?: string;
   }) {
+    const finalTracking =
+      data.trackingCode && data.trackingCode.trim()
+        ? data.trackingCode.trim().toUpperCase()
+        : `WR-${Math.floor(10000 + Math.random() * 90000)}`;
+
     const status = data.currentStatus || 'En el origen';
     const isPickup = Boolean(data.hasPickup || status === 'Pick up en proceso');
 
+    const descNote = data.contentDescription || data.description || '';
+    const declaredNote = data.declaredValue ? ` | Valor Decl.: $${data.declaredValue}` : '';
+    const eventDescription =
+      status === 'Pick up en proceso'
+        ? `Recolección a domicilio programada en la dirección del cliente.${descNote ? ` Contenido: ${descNote}` : ''}${declaredNote}`
+        : `El Warehouse ha sido registrado e ingresado en el almacén de origen.${descNote ? ` Contenido: ${descNote}` : ''}${declaredNote}`;
+
     const shipment = await prisma.shipment.create({
       data: {
-        ...data,
+        trackingCode: finalTracking,
+        providerWarehouseReceipt: data.providerWarehouseReceipt || null,
+        userId: data.userId || null,
+        senderName: data.senderName,
+        senderCity: data.senderCity,
+        recipientName: data.recipientName,
+        recipientCity: data.recipientCity,
+        recipientAddress: data.recipientAddress,
+        serviceType: data.serviceType || 'Aéreo Express',
+        weightKg: Number(data.weightKg) || 1.0,
+        dimensions: data.dimensions || '30x20x15 cm',
+        estimatedDelivery: data.estimatedDelivery || '3-5 días hábiles',
         currentStatus: status,
         hasPickup: isPickup,
         pickupId: data.pickupId || null,
@@ -164,11 +192,8 @@ export class ShipmentService {
             {
               location: data.senderCity,
               status: status,
-              title: status === 'Pick up en proceso' ? 'Pick up en Proceso' : 'Recibido en Origen',
-              description:
-                status === 'Pick up en proceso'
-                  ? 'Recolección a domicilio programada en la dirección del cliente.'
-                  : 'El envío ha sido ingresado en el almacén de origen.',
+              title: status === 'Pick up en proceso' ? 'Pick up en Proceso' : 'Warehouse Recibido en Origen',
+              description: eventDescription,
             },
           ],
         },
