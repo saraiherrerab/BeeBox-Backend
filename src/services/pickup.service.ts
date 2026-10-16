@@ -61,7 +61,7 @@ export class PickupService {
       timeSlot: string;
     }
   ) {
-    const pickupCode = `WR-${Math.floor(10000 + Math.random() * 90000)}`;
+    const pickupCode = `PK-${Math.floor(10000 + Math.random() * 90000)}`;
 
     const pickup = await prisma.pickup.create({
       data: {

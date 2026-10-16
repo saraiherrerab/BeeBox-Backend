@@ -163,11 +163,28 @@ export class ShipmentService {
     const status = data.currentStatus || 'En el origen';
     const isPickup = Boolean(data.hasPickup || status === 'Pick up en proceso');
 
+    let linkedPickup = null;
+    if (data.pickupId) {
+      linkedPickup = await prisma.pickup.findUnique({
+        where: { id: data.pickupId },
+      });
+    }
+
     const descNote = data.contentDescription || data.description || '';
     const declaredNote = data.declaredValue ? ` | Valor Decl.: $${data.declaredValue}` : '';
+
+    const eventTitle =
+      status === 'Pick up en proceso'
+        ? 'Pick up en Proceso'
+        : linkedPickup
+        ? `Warehouse Ingresado desde Pick up ${linkedPickup.pickupCode}`
+        : 'Warehouse Recibido en Origen';
+
     const eventDescription =
       status === 'Pick up en proceso'
         ? `Recolección a domicilio programada en la dirección del cliente.${descNote ? ` Contenido: ${descNote}` : ''}${declaredNote}`
+        : linkedPickup
+        ? `El Warehouse ha sido registrado e ingresado al almacén de origen a partir de la recolección Pick up ${linkedPickup.pickupCode}.${descNote ? ` Contenido: ${descNote}` : ''}${declaredNote}`
         : `El Warehouse ha sido registrado e ingresado en el almacén de origen.${descNote ? ` Contenido: ${descNote}` : ''}${declaredNote}`;
 
     const shipment = await prisma.shipment.create({
@@ -192,7 +209,7 @@ export class ShipmentService {
             {
               location: data.senderCity,
               status: status,
-              title: status === 'Pick up en proceso' ? 'Pick up en Proceso' : 'Warehouse Recibido en Origen',
+              title: eventTitle,
               description: eventDescription,
             },
           ],
@@ -201,12 +218,29 @@ export class ShipmentService {
       include: { events: true },
     });
 
-    if (data.userId) {
+    if (linkedPickup) {
+      await prisma.pickup.update({
+        where: { id: linkedPickup.id },
+        data: { status: 'COMPLETADO' },
+      });
+      emitSocketEvent('pickup:updated', { ...linkedPickup, status: 'COMPLETADO', shipment });
+    }
+
+    const targetUserId = data.userId || linkedPickup?.userId;
+    if (targetUserId) {
+      const notifTitle = linkedPickup
+        ? `Pick up ${linkedPickup.pickupCode} transformado a Warehouse ${finalTracking}`
+        : status === 'Pick up en proceso'
+        ? 'Pickup Programado'
+        : 'Envío Creado / Recibido en Origen';
+      const notifMsg = linkedPickup
+        ? `Tu recolección ${linkedPickup.pickupCode} ingresó a almacén y fue formalizada como Warehouse ${finalTracking}. Ya puedes rastrearla.`
+        : `Tu paquete con guía ${finalTracking} se encuentra en estado: ${status}.`;
       await notificationService.createNotification(
-        data.userId,
-        status === 'Pick up en proceso' ? 'Pickup Programado' : 'Envío Creado / Recibido en Origen',
-        `Tu paquete con guía ${data.trackingCode} se encuentra en estado: ${status}.`,
-        status === 'Pick up en proceso' ? 'pickup' : 'origen'
+        targetUserId,
+        notifTitle,
+        notifMsg,
+        linkedPickup ? 'warehouse' : status === 'Pick up en proceso' ? 'pickup' : 'origen'
       );
     }
 
