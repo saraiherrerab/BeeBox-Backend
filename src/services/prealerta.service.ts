@@ -62,14 +62,39 @@ export class PrealertaService {
       destination?: string;
     }
   ) {
+    const normalizedTracking = (data.trackingNumber || '').trim();
+    if (!normalizedTracking) {
+      throw new Error('El número de rastreo es obligatorio.');
+    }
+
+    const parsedAmount = Number(data.amountPaid);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      throw new Error('El valor declarado (USD) debe ser un monto numérico positivo mayor a $0.00.');
+    }
+
+    const duplicate = await prisma.prealerta.findFirst({
+      where: {
+        trackingNumber: {
+          equals: normalizedTracking,
+          mode: 'insensitive',
+        },
+      },
+    });
+
+    if (duplicate) {
+      throw new Error(
+        `El número de rastreo "${normalizedTracking}" ya está registrado en otra prealerta (${duplicate.store} — ${duplicate.description}).`
+      );
+    }
+
     const prealerta = await prisma.prealerta.create({
       data: {
         userId,
-        store: data.store,
-        trackingNumber: data.trackingNumber,
-        providerWarehouseReceipt: data.providerWarehouseReceipt || null,
-        description: data.description,
-        amountPaid: Number(data.amountPaid),
+        store: data.store.trim(),
+        trackingNumber: normalizedTracking,
+        providerWarehouseReceipt: data.providerWarehouseReceipt ? data.providerWarehouseReceipt.trim() : null,
+        description: data.description.trim(),
+        amountPaid: Math.round(parsedAmount * 100) / 100,
         receiptFileName: data.receiptFileName || null,
         destination: data.destination || 'Caracas, Venezuela',
         status: 'Prealertado',
@@ -227,11 +252,37 @@ export class PrealertaService {
     }
 
     const updateData: any = {};
-    if (data.store !== undefined) updateData.store = data.store;
-    if (data.trackingNumber !== undefined) updateData.trackingNumber = data.trackingNumber;
-    if (data.providerWarehouseReceipt !== undefined) updateData.providerWarehouseReceipt = data.providerWarehouseReceipt || null;
-    if (data.description !== undefined) updateData.description = data.description;
-    if (data.amountPaid !== undefined) updateData.amountPaid = Number(data.amountPaid);
+    if (data.store !== undefined) updateData.store = data.store.trim();
+    if (data.trackingNumber !== undefined) {
+      const normalizedTracking = data.trackingNumber.trim();
+      if (!normalizedTracking) {
+        throw new Error('El número de rastreo no puede estar vacío.');
+      }
+      const duplicate = await prisma.prealerta.findFirst({
+        where: {
+          id: { not: existing.id },
+          trackingNumber: {
+            equals: normalizedTracking,
+            mode: 'insensitive',
+          },
+        },
+      });
+      if (duplicate) {
+        throw new Error(
+          `El número de rastreo "${normalizedTracking}" ya está registrado en otra prealerta (${duplicate.store} — ${duplicate.description}).`
+        );
+      }
+      updateData.trackingNumber = normalizedTracking;
+    }
+    if (data.providerWarehouseReceipt !== undefined) updateData.providerWarehouseReceipt = data.providerWarehouseReceipt ? data.providerWarehouseReceipt.trim() : null;
+    if (data.description !== undefined) updateData.description = data.description.trim();
+    if (data.amountPaid !== undefined) {
+      const parsedAmount = Number(data.amountPaid);
+      if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+        throw new Error('El valor declarado (USD) debe ser un monto numérico positivo mayor a $0.00.');
+      }
+      updateData.amountPaid = Math.round(parsedAmount * 100) / 100;
+    }
     if (data.destination !== undefined) updateData.destination = data.destination;
     if ((data as any).status !== undefined) updateData.status = (data as any).status;
 

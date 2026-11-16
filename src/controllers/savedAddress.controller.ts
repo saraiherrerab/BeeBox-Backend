@@ -36,7 +36,8 @@ export async function createSavedAddressController(req: AuthenticatedRequest, re
 
 export async function updateSavedAddressController(req: AuthenticatedRequest, res: Response) {
   try {
-    const savedAddress = await savedAddressService.update(paramId(req), req.user!.userId, parseAddress(req.body));
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+    const savedAddress = await savedAddressService.update(paramId(req), req.user!.userId, parseAddress(req.body), isAdmin);
     res.json({ success: true, savedAddress, message: 'Dirección actualizada.' });
   } catch (error: any) {
     sendError(res, error, 'Error al actualizar dirección.');
@@ -45,7 +46,8 @@ export async function updateSavedAddressController(req: AuthenticatedRequest, re
 
 export async function deleteSavedAddressController(req: AuthenticatedRequest, res: Response) {
   try {
-    await savedAddressService.remove(paramId(req), req.user!.userId);
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+    await savedAddressService.remove(paramId(req), req.user!.userId, isAdmin);
     res.json({ success: true, message: 'Dirección eliminada.' });
   } catch (error: any) {
     sendError(res, error, 'Error al eliminar dirección.');

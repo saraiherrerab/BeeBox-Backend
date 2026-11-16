@@ -1,5 +1,8 @@
 import prisma from '../config/db.js';
 import { HttpError } from '../utils/http.js';
+import { NotificationService } from './notification.service.js';
+
+const notificationService = new NotificationService();
 
 export interface SavedAddressInput {
   label?: string | null;
@@ -28,14 +31,29 @@ export class SavedAddressService {
     return prisma.savedAddress.create({ data: { ...normalize(input), userId } });
   }
 
-  async update(id: string, userId: string, input: SavedAddressInput) {
-    const found = await prisma.savedAddress.findFirst({ where: { id, userId } });
+  async update(id: string, userId: string, input: SavedAddressInput, isAdmin = false) {
+    const found = await prisma.savedAddress.findFirst({
+      where: isAdmin ? { id } : { id, userId },
+    });
     if (!found) throw new HttpError(404, 'Dirección no encontrada.');
-    return prisma.savedAddress.update({ where: { id }, data: normalize(input) });
+    const updated = await prisma.savedAddress.update({ where: { id }, data: normalize(input) });
+
+    if (isAdmin && found.userId !== userId) {
+      await notificationService.createNotification(
+        found.userId,
+        'Dirección actualizada por Administración',
+        `El administrador actualizó tu dirección guardada "${updated.label}" (${updated.address}, ${updated.city}).`,
+        'info'
+      );
+    }
+
+    return updated;
   }
 
-  async remove(id: string, userId: string) {
-    const { count } = await prisma.savedAddress.deleteMany({ where: { id, userId } });
+  async remove(id: string, userId: string, isAdmin = false) {
+    const { count } = await prisma.savedAddress.deleteMany({
+      where: isAdmin ? { id } : { id, userId },
+    });
     if (count === 0) throw new HttpError(404, 'Dirección no encontrada.');
   }
 }

@@ -37,17 +37,24 @@ export async function getUserByIdController(req: AuthenticatedRequest, res: Resp
 export async function updateUserController(req: AuthenticatedRequest, res: Response) {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { name, phone } = req.body;
+    const { name, phone, email, suiteCode } = req.body;
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
 
-    if (req.user?.role !== 'admin' && req.user?.role !== 'super_admin' && req.user?.userId !== id) {
+    if (!isAdmin && req.user?.userId !== id) {
       res.status(403).json({ error: true, message: 'No tienes permiso para modificar este usuario.' });
       return;
     }
 
-    const updated = await userService.updateUser(id, { name, phone });
+    const updated = await userService.updateUser(
+      id,
+      { name, phone, email, suiteCode },
+      isAdmin && req.user?.userId !== id
+    );
     res.json({ success: true, user: updated, message: 'Usuario actualizado correctamente.' });
   } catch (error: any) {
-    res.status(500).json({ error: true, message: error.message || 'Error al actualizar usuario.' });
+    const msg = error.message || 'Error al actualizar usuario.';
+    const status = msg.includes('ya pertenece') || msg.includes('ya está asignado') ? 409 : 400;
+    res.status(status).json({ error: true, message: msg });
   }
 }
 

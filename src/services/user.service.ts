@@ -66,6 +66,12 @@ export class UserService {
         disabledReason: true,
         createdAt: true,
         updatedAt: true,
+        savedAddresses: {
+          orderBy: { updatedAt: 'desc' },
+        },
+        savedRecipients: {
+          orderBy: { updatedAt: 'desc' },
+        },
         _count: {
           select: {
             shipments: true,
@@ -87,13 +93,72 @@ export class UserService {
     };
   }
 
-  async updateUser(id: string, data: { name?: string; phone?: string }) {
+  async updateUser(
+    id: string,
+    data: { name?: string; phone?: string; email?: string; suiteCode?: string },
+    isAdminEdit = false
+  ) {
+    const existing = await prisma.user.findUnique({ where: { id } });
+    if (!existing) {
+      throw new Error('Usuario no encontrado.');
+    }
+
+    const updatePayload: any = {};
+    const changedFields: string[] = [];
+
+    if (data.name !== undefined && data.name.trim()) {
+      const trimmedName = data.name.trim();
+      if (trimmedName !== existing.name) {
+        updatePayload.name = trimmedName;
+        changedFields.push('nombre');
+      }
+    }
+
+    if (data.phone !== undefined) {
+      const trimmedPhone = data.phone.trim();
+      if (trimmedPhone !== (existing.phone || '')) {
+        updatePayload.phone = trimmedPhone || null;
+        changedFields.push('teléfono de contacto');
+      }
+    }
+
+    if (isAdminEdit && data.email !== undefined && data.email.trim()) {
+      const trimmedEmail = data.email.trim().toLowerCase();
+      if (trimmedEmail !== existing.email.toLowerCase()) {
+        const duplicateEmail = await prisma.user.findFirst({
+          where: {
+            id: { not: id },
+            email: { equals: trimmedEmail, mode: 'insensitive' },
+          },
+        });
+        if (duplicateEmail) {
+          throw new Error('El correo electrónico indicado ya pertenece a otra cuenta.');
+        }
+        updatePayload.email = trimmedEmail;
+        changedFields.push('correo electrónico');
+      }
+    }
+
+    if (isAdminEdit && data.suiteCode !== undefined && data.suiteCode.trim()) {
+      const trimmedSuite = data.suiteCode.trim().toUpperCase();
+      if (trimmedSuite !== (existing.suiteCode || '')) {
+        const duplicateSuite = await prisma.user.findFirst({
+          where: {
+            id: { not: id },
+            suiteCode: { equals: trimmedSuite, mode: 'insensitive' },
+          },
+        });
+        if (duplicateSuite) {
+          throw new Error('El código de casillero indicado ya está asignado a otro cliente.');
+        }
+        updatePayload.suiteCode = trimmedSuite;
+        changedFields.push('código de casillero');
+      }
+    }
+
     const updated = await prisma.user.update({
       where: { id },
-      data: {
-        ...(data.name ? { name: data.name } : {}),
-        ...(data.phone !== undefined ? { phone: data.phone } : {}),
-      },
+      data: updatePayload,
       select: {
         id: true,
         name: true,
@@ -105,8 +170,23 @@ export class UserService {
         disabledReason: true,
         createdAt: true,
         updatedAt: true,
+        savedAddresses: {
+          orderBy: { updatedAt: 'desc' },
+        },
+        savedRecipients: {
+          orderBy: { updatedAt: 'desc' },
+        },
       },
     });
+
+    if (isAdminEdit && changedFields.length > 0) {
+      await notificationService.createNotification(
+        id,
+        'Datos de perfil actualizados por Administración',
+        `El equipo de soporte de BeeBox actualizó tu información (${changedFields.join(', ')}). Puedes verificar los datos en la sección Mi Perfil.`,
+        'info'
+      );
+    }
 
     return {
       ...updated,

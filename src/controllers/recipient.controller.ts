@@ -36,7 +36,8 @@ export async function createRecipientController(req: AuthenticatedRequest, res: 
 
 export async function updateRecipientController(req: AuthenticatedRequest, res: Response) {
   try {
-    const recipient = await recipientService.update(paramId(req), req.user!.userId, parseRecipient(req.body));
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+    const recipient = await recipientService.update(paramId(req), req.user!.userId, parseRecipient(req.body), isAdmin);
     res.json({ success: true, recipient, message: 'Destinatario actualizado.' });
   } catch (error: any) {
     sendError(res, error, 'Error al actualizar destinatario.');
@@ -45,7 +46,8 @@ export async function updateRecipientController(req: AuthenticatedRequest, res: 
 
 export async function deleteRecipientController(req: AuthenticatedRequest, res: Response) {
   try {
-    await recipientService.remove(paramId(req), req.user!.userId);
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'super_admin';
+    await recipientService.remove(paramId(req), req.user!.userId, isAdmin);
     res.json({ success: true, message: 'Destinatario eliminado.' });
   } catch (error: any) {
     sendError(res, error, 'Error al eliminar destinatario.');

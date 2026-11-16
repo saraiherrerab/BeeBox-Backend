@@ -167,7 +167,25 @@ export class ShipmentService {
     if (data.pickupId) {
       linkedPickup = await prisma.pickup.findUnique({
         where: { id: data.pickupId },
+        include: { shipment: true },
       });
+      if (!linkedPickup) {
+        throw new Error('La solicitud de pickup seleccionada no existe.');
+      }
+      if (linkedPickup.shipment) {
+        throw new Error(
+          `El pickup ${linkedPickup.pickupCode} ya cuenta con el Warehouse ${linkedPickup.shipment.trackingCode}. No se puede crear un Warehouse duplicado.`
+        );
+      }
+    }
+
+    const existingTracking = await prisma.shipment.findUnique({
+      where: { trackingCode: finalTracking },
+    });
+    if (existingTracking) {
+      throw new Error(
+        `El código de Warehouse "${finalTracking}" ya se encuentra registrado en el sistema.`
+      );
     }
 
     const descNote = data.contentDescription || data.description || '';

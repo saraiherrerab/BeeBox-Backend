@@ -36,7 +36,16 @@ export async function createShipment(req: Request, res: Response, next: NextFunc
   try {
     const newShipment = await shipmentService.createShipment(req.body);
     res.status(201).json(newShipment);
-  } catch (error) {
+  } catch (error: any) {
+    const msg = error?.message || '';
+    if (msg.includes('ya cuenta con el Warehouse') || msg.includes('ya se encuentra registrado')) {
+      res.status(409).json({ error: true, message: msg });
+      return;
+    }
+    if (msg.includes('no existe')) {
+      res.status(404).json({ error: true, message: msg });
+      return;
+    }
     next(error);
   }
 }

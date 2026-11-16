@@ -19,6 +19,6 @@ router.get('/', authenticateToken as any, requireRole(['admin', 'super_admin']) 
 router.get('/:id', authenticateToken as any, getUserByIdController as any);
 router.patch('/:id', authenticateToken as any, updateUserController as any);
 router.patch('/:id/role', authenticateToken as any, requireRole(['super_admin']) as any, updateUserRoleController as any);
-router.patch('/:id/status', authenticateToken as any, requireRole(['super_admin']) as any, updateUserStatusController as any);
+router.patch('/:id/status', authenticateToken as any, requireRole(['admin', 'super_admin']) as any, updateUserStatusController as any);
 
 export default router;

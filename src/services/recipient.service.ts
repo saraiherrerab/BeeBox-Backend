@@ -1,5 +1,8 @@
 import prisma from '../config/db.js';
 import { HttpError } from '../utils/http.js';
+import { NotificationService } from './notification.service.js';
+
+const notificationService = new NotificationService();
 
 export interface RecipientInput {
   name: string;
@@ -36,14 +39,29 @@ export class RecipientService {
     return prisma.savedRecipient.create({ data: { ...data, userId } });
   }
 
-  async update(id: string, userId: string, input: RecipientInput) {
-    const found = await prisma.savedRecipient.findFirst({ where: { id, userId } });
+  async update(id: string, userId: string, input: RecipientInput, isAdmin = false) {
+    const found = await prisma.savedRecipient.findFirst({
+      where: isAdmin ? { id } : { id, userId },
+    });
     if (!found) throw new HttpError(404, 'Destinatario no encontrado.');
-    return prisma.savedRecipient.update({ where: { id }, data: normalize(input) });
+    const updated = await prisma.savedRecipient.update({ where: { id }, data: normalize(input) });
+
+    if (isAdmin && found.userId !== userId) {
+      await notificationService.createNotification(
+        found.userId,
+        'Dirección de entrega actualizada por Administración',
+        `El administrador actualizó los datos de entrega del destinatario "${updated.name}" (${updated.address}, ${updated.city}).`,
+        'info'
+      );
+    }
+
+    return updated;
   }
 
-  async remove(id: string, userId: string) {
-    const { count } = await prisma.savedRecipient.deleteMany({ where: { id, userId } });
+  async remove(id: string, userId: string, isAdmin = false) {
+    const { count } = await prisma.savedRecipient.deleteMany({
+      where: isAdmin ? { id } : { id, userId },
+    });
     if (count === 0) throw new HttpError(404, 'Destinatario no encontrado.');
   }
 }

@@ -44,7 +44,11 @@ export async function createPrealertaController(req: AuthenticatedRequest, res: 
 
     res.status(201).json({ success: true, prealerta, message: 'Prealerta registrada exitosamente.' });
   } catch (error: any) {
-    res.status(500).json({ error: true, message: error.message || 'Error al crear prealerta.' });
+    const msg = error.message || 'Error al crear prealerta.';
+    const isDuplicate = msg.includes('ya está registrado');
+    const isValidation = msg.includes('debe ser un monto') || msg.includes('obligatorio');
+    const statusCode = isDuplicate ? 409 : isValidation ? 400 : 500;
+    res.status(statusCode).json({ error: true, message: msg });
   }
 }
 
