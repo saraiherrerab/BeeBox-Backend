@@ -16,12 +16,12 @@ export function passwordResetEmail(name: string, resetUrl: string): EmailContent
       title,
       bodyHtml: `<p style="margin:0 0 12px;">Hola ${escapeHtml(name)},</p>
         <p style="margin:0 0 12px;">Recibimos una solicitud para restablecer la contraseña de tu cuenta BeeBox. Haz clic en el botón para crear una nueva.</p>
-        <p style="margin:0 0 12px;">El enlace vence en <strong>1 hora</strong> y solo puede usarse una vez.</p>
+        <p style="margin:0 0 12px;">El enlace vence en <strong>30 minutos</strong> y solo puede usarse una vez.</p>
         <p style="margin:0;font-size:13px;color:#64748B;">Si no lo pediste, ignora este correo: tu contraseña no cambiará.</p>
         <p style="margin:16px 0 0;font-size:12px;color:#64748B;word-break:break-all;">Si el botón no funciona, copia este enlace en tu navegador:<br>${escapeHtml(resetUrl)}</p>`,
       button: { label: 'Restablecer contraseña', url: resetUrl },
     }),
-    text: `Hola ${name},\n\nRecibimos una solicitud para restablecer la contraseña de tu cuenta BeeBox.\nAbre este enlace para crear una nueva (vence en 1 hora y solo puede usarse una vez):\n${resetUrl}\n\nSi no lo pediste, ignora este correo: tu contraseña no cambiará.${FOOTER_TEXT}`,
+    text: `Hola ${name},\n\nRecibimos una solicitud para restablecer la contraseña de tu cuenta BeeBox.\nAbre este enlace para crear una nueva (vence en 30 minutos y solo puede usarse una vez):\n${resetUrl}\n\nSi no lo pediste, ignora este correo: tu contraseña no cambiará.${FOOTER_TEXT}`,
   };
 }
 

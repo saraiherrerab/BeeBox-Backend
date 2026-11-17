@@ -10,6 +10,8 @@ import { errorHandler } from './middlewares/errorHandler.js';
 dotenv.config();
 
 const app = express();
+// Detrás de Nginx: toma la IP real del cliente de X-Forwarded-For (lo usa el límite por IP).
+app.set('trust proxy', 1);
 
 app.use(cors({
   origin: '*', // Permitir conexión desde el frontend Beebox-Empresa-De-Transporte

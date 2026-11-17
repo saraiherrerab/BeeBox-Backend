@@ -7,8 +7,9 @@ import { HttpError } from '../utils/http.js';
 import { validatePassword } from './auth.service.js';
 import { sendMail } from './mail.service.js';
 
-const TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hora
+const TOKEN_TTL_MS = 30 * 60 * 1000; // 30 minutos (OBS-09 pide 15 a 30)
 const MAX_TOKENS_PER_HOUR = 3;
+const RATE_WINDOW_MS = 60 * 60 * 1000;
 const INVALID_LINK = 'El enlace no es válido o ya venció.';
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -35,7 +36,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
   if (!user || !user.active) return;
 
   const recent = await prisma.passwordResetToken.count({
-    where: { userId: user.id, createdAt: { gte: new Date(Date.now() - TOKEN_TTL_MS) } },
+    where: { userId: user.id, createdAt: { gte: new Date(Date.now() - RATE_WINDOW_MS) } },
   });
   if (recent >= MAX_TOKENS_PER_HOUR) return;
 

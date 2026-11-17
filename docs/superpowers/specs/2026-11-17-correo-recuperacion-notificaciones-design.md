@@ -81,7 +81,7 @@ registra en consola lo que habría mandado.
     oscuro, franja amarilla `#F5C242`, cuerpo blanco, botón amarillo con texto oscuro,
     pie con "BeeBox Empresa de Transporte" y aviso de que es un correo automático.
   - `passwordReset.ts`: saludo con el nombre, botón "Restablecer contraseña", aviso de
-    vencimiento (1 hora) y "si no lo pediste, ignora este correo".
+    vencimiento (30 minutos) y "si no lo pediste, ignora este correo".
   - `passwordChanged.ts`: confirmación de que la contraseña cambió.
   - `notification.ts`: título y mensaje de la notificación, botón "Ver en BeeBox" que
     lleva a `/dashboard/notificaciones`.
@@ -123,7 +123,7 @@ Endpoints públicos en `auth.routes.ts`:
   - Responde **siempre** 200 con el mismo mensaje genérico ("Si el correo está registrado,
     recibirás un enlace…"), exista o no la cuenta.
   - Si el usuario existe y está activo: genera token aleatorio de 32 bytes (hex), guarda
-    solo su SHA-256, vence en 1 hora, y envía el correo con
+    solo su SHA-256, vence en 30 minutos, y envía el correo con
     `${APP_URL}/restablecer-contrasena?token=<token>`.
   - Límite: si el usuario ya tiene 3 tokens creados en la última hora, no crea otro
     (responde igual, genérico).
@@ -169,7 +169,7 @@ agregarla queda fuera de alcance.
 
 ## Decisiones tomadas por el implementador (revisables)
 
-- Vencimiento del enlace: 1 hora. Límite: 3 solicitudes por hora por usuario.
+- Vencimiento del enlace: 30 minutos (OBS-09). Límite adicional: 10 intentos cada 15 min por IP. Límite: 3 solicitudes por hora por usuario.
 - Fire-and-forget sin reintentos para las notificaciones.
 - Usuarios inactivos solo reciben el correo de cuenta inhabilitada.
 - Correo de confirmación tras cambiar contraseña (aviso de seguridad).

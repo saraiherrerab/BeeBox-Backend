@@ -35,7 +35,7 @@ describe('plantillas de correo', () => {
     expect(mail.subject).toBe('Restablece tu contraseña de BeeBox');
     expect(mail.html).toContain(url);
     expect(mail.text).toContain(url);
-    expect(mail.html).toContain('1 hora');
+    expect(mail.html).toContain('30 minutos');
   });
 });
 

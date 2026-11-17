@@ -72,6 +72,15 @@ describe('POST /api/auth/forgot-password', () => {
     expect(await prisma.passwordResetToken.count({ where: { userId: user.id } })).toBe(3);
   });
 
+  it('el enlace vence a los 30 minutos y el correo lo dice', async () => {
+    const user = await createUserWithPassword();
+    await requestToken(user.email);
+    const stored = await prisma.passwordResetToken.findFirstOrThrow({ where: { userId: user.id } });
+    const minutes = (stored.expiresAt.getTime() - stored.createdAt.getTime()) / 60000;
+    expect(minutes).toBeCloseTo(30, 0);
+    expect(sendMailMock.mock.calls[0][0].text).toContain('30 minutos');
+  });
+
   it('guarda solo el hash del token', async () => {
     const user = await createUserWithPassword();
     const token = await requestToken(user.email);
