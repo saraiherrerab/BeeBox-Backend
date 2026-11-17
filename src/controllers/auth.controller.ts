@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../services/auth.service.js';
+import { requestPasswordReset, resetPassword } from '../services/passwordReset.service.js';
+import { sendError } from '../utils/http.js';
 
 const authService = new AuthService();
 
@@ -93,5 +95,27 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
     res.json({ user: updatedUser });
   } catch (error: any) {
     res.status(400).json({ error: true, message: error.message || 'Error al actualizar perfil.' });
+  }
+}
+
+const FORGOT_MESSAGE = 'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.';
+
+export async function forgotPassword(req: Request, res: Response) {
+  try {
+    await requestPasswordReset(String(req.body?.email ?? ''));
+  } catch (error) {
+    // Se registra pero no se expone: la respuesta no debe revelar nada sobre la cuenta.
+    console.error('[auth] Error en forgot-password:', error);
+  }
+  res.json({ message: FORGOT_MESSAGE });
+}
+
+export async function resetPasswordHandler(req: Request, res: Response) {
+  try {
+    const { token, password } = req.body ?? {};
+    await resetPassword(token, password);
+    res.json({ message: 'Contraseña actualizada. Ya puedes iniciar sesión.' });
+  } catch (error: any) {
+    sendError(res, error, 'Error al restablecer la contraseña.');
   }
 }
