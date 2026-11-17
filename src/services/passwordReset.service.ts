@@ -13,15 +13,25 @@ const INVALID_LINK = 'El enlace no es válido o ya venció.';
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
+// El registro guarda el correo tal cual lo escribió el cliente, así que se busca sin
+// distinguir mayúsculas. Se compara con lower() y no con `mode: 'insensitive'`, porque
+// Prisma lo traduce a ILIKE y `%` o `_` funcionarían como comodines.
+async function findUserByEmail(email: string) {
+  const exact = await prisma.user.findUnique({ where: { email } });
+  if (exact) return exact;
+  const matches = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "User" WHERE lower(email) = lower(${email}) LIMIT 2`;
+  // Si dos cuentas difieren solo en mayúsculas, no se adivina cuál es.
+  if (matches.length !== 1) return null;
+  return prisma.user.findUnique({ where: { id: matches[0].id } });
+}
+
 // Nunca revela si la cuenta existe: quien llama responde siempre lo mismo.
 export async function requestPasswordReset(email: string): Promise<void> {
   const normalized = (email || '').trim();
-  if (!normalized) return;
+  if (!normalized.includes('@')) return;
 
-  // El registro guarda el correo tal cual lo escribió el cliente.
-  const user = await prisma.user.findFirst({
-    where: { email: { equals: normalized, mode: 'insensitive' } },
-  });
+  const user = await findUserByEmail(normalized);
   if (!user || !user.active) return;
 
   const recent = await prisma.passwordResetToken.count({
@@ -57,18 +67,24 @@ export async function resetPassword(token: string, password: string): Promise<vo
     throw new HttpError(400, error.message);
   }
 
+  const hashed = await bcrypt.hash(password, 10);
   const now = new Date();
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: record.userId },
-      data: { password: await bcrypt.hash(password, 10) },
-    }),
-    // Marca este token y anula cualquier otro pendiente del mismo usuario.
-    prisma.passwordResetToken.updateMany({
+  await prisma.$transaction(async (tx) => {
+    // Reclamar el token de forma atómica: si dos pedidos llegan juntos, solo uno lo consigue.
+    const claimed = await tx.passwordResetToken.updateMany({
+      where: { id: record.id, usedAt: null },
+      data: { usedAt: now },
+    });
+    if (claimed.count !== 1) throw new HttpError(400, INVALID_LINK);
+
+    await tx.user.update({ where: { id: record.userId }, data: { password: hashed } });
+    // Anula cualquier otro enlace pendiente del mismo usuario.
+    await tx.passwordResetToken.updateMany({
       where: { userId: record.userId, usedAt: null },
       data: { usedAt: now },
-    }),
-  ]);
+    });
+  });
 
-  await sendMail({ to: record.user.email, ...passwordChangedEmail(record.user.name) });
+  // Sin await: la contraseña ya cambió; un SMTP lento no debe mostrarle un error al cliente.
+  void sendMail({ to: record.user.email, ...passwordChangedEmail(record.user.name) });
 }

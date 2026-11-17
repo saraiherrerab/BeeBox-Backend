@@ -80,6 +80,14 @@ describe('POST /api/auth/forgot-password', () => {
     expect(stored.tokenHash).toMatch(/^[a-f0-9]{64}$/);
   });
 
+  it('trata % y _ como texto, no como comodines', async () => {
+    await createUserWithPassword();
+    for (const email of ['%', '%@beebox.test', 'test-libreta-%', '_%']) {
+      await request(app).post('/api/auth/forgot-password').send({ email });
+    }
+    expect(sendMailMock).not.toHaveBeenCalled();
+  });
+
   it('no envía enlace a una cuenta inactiva', async () => {
     const user = await createUserWithPassword();
     await prisma.user.update({ where: { id: user.id }, data: { active: false } });
@@ -111,6 +119,24 @@ describe('POST /api/auth/reset-password', () => {
     const again = await request(app).post('/api/auth/reset-password').send({ token, password: 'Otra456!' });
     expect(again.status).toBe(400);
     expect(again.body.message).toBe(INVALID);
+  });
+
+  it('acepta el token una sola vez aunque lleguen dos pedidos simultáneos', async () => {
+    const user = await createUserWithPassword();
+    const token = await requestToken(user.email);
+    const [a, b] = await Promise.all([
+      request(app).post('/api/auth/reset-password').send({ token, password: 'Primera123!' }),
+      request(app).post('/api/auth/reset-password').send({ token, password: 'Segunda456!' }),
+    ]);
+    expect([a.status, b.status].sort()).toEqual([200, 400]);
+  });
+
+  it('responde sin esperar a que salga el correo de confirmación', async () => {
+    const user = await createUserWithPassword();
+    const token = await requestToken(user.email);
+    sendMailMock.mockImplementation(() => new Promise<void>(() => {})); // SMTP colgado
+    const res = await request(app).post('/api/auth/reset-password').send({ token, password: 'Nueva123!' }).timeout(3000);
+    expect(res.status).toBe(200);
   });
 
   it('rechaza un token vencido', async () => {

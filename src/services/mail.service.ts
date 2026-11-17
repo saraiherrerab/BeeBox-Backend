@@ -17,6 +17,10 @@ function getTransporter(): Transporter {
       port,
       secure: port === 465,
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      // Los valores por defecto de nodemailer (2 y 10 min) dejan envíos colgados demasiado tiempo.
+      connectionTimeout: 15_000,
+      greetingTimeout: 15_000,
+      socketTimeout: 30_000,
     });
   }
   return transporter;
