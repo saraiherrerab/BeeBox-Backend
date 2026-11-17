@@ -4,6 +4,19 @@ import { emitSocketEvent } from '../socket.js';
 
 const notificationService = new NotificationService();
 
+// El rastreo es único por cliente (OBS-04): dos clientes distintos pueden prealertar el mismo
+// número, y el error nunca muestra datos de otro cliente. Se compara con lower() en vez de
+// `mode: 'insensitive'` porque Prisma lo traduce a ILIKE y `%` o `_` actuarían como comodines.
+async function findDuplicateTracking(userId: string, trackingNumber: string, excludeId?: string) {
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "Prealerta"
+    WHERE "userId" = ${userId}
+      AND lower("trackingNumber") = lower(${trackingNumber})
+      AND id <> ${excludeId ?? ''}
+    LIMIT 1`;
+  return rows.length ? prisma.prealerta.findUnique({ where: { id: rows[0].id } }) : null;
+}
+
 export class PrealertaService {
   async getPrealertas(userId?: string, isRoleAdmin?: boolean, search?: string) {
     const whereClause: any = {};
@@ -72,14 +85,7 @@ export class PrealertaService {
       throw new Error('El valor declarado (USD) debe ser un monto numérico positivo mayor a $0.00.');
     }
 
-    const duplicate = await prisma.prealerta.findFirst({
-      where: {
-        trackingNumber: {
-          equals: normalizedTracking,
-          mode: 'insensitive',
-        },
-      },
-    });
+    const duplicate = await findDuplicateTracking(userId, normalizedTracking);
 
     if (duplicate) {
       throw new Error(
@@ -258,15 +264,8 @@ export class PrealertaService {
       if (!normalizedTracking) {
         throw new Error('El número de rastreo no puede estar vacío.');
       }
-      const duplicate = await prisma.prealerta.findFirst({
-        where: {
-          id: { not: existing.id },
-          trackingNumber: {
-            equals: normalizedTracking,
-            mode: 'insensitive',
-          },
-        },
-      });
+      // Se compara contra las prealertas del dueño, aunque edite un admin.
+      const duplicate = await findDuplicateTracking(existing.userId, normalizedTracking, existing.id);
       if (duplicate) {
         throw new Error(
           `El número de rastreo "${normalizedTracking}" ya está registrado en otra prealerta (${duplicate.store} — ${duplicate.description}).`
