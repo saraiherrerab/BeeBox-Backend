@@ -1,4 +1,6 @@
 import prisma from '../config/db.js';
+import { notificationEmail } from '../emails/templates.js';
+import { sendMail } from './mail.service.js';
 
 export class NotificationService {
   async getUserNotifications(userId: string) {
@@ -9,7 +11,7 @@ export class NotificationService {
   }
 
   async createNotification(userId: string, title: string, message: string, type: string = 'info') {
-    return prisma.notification.create({
+    const notification = await prisma.notification.create({
       data: {
         userId,
         title,
@@ -17,6 +19,25 @@ export class NotificationService {
         type,
       },
     });
+    // En segundo plano: el correo nunca debe frenar ni romper la operación que notifica.
+    void this.emailNotification(userId, title, message, type);
+    return notification;
+  }
+
+  private async emailNotification(userId: string, title: string, message: string, type: string) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true, email: true, active: true },
+      });
+      if (!user) return;
+      // A una cuenta inhabilitada solo se le avisa justamente eso.
+      if (!user.active && type !== 'account_status') return;
+      const content = notificationEmail(user.name, title, message);
+      await sendMail({ to: user.email, ...content });
+    } catch (error) {
+      console.error('[mail] No se pudo enviar el correo de la notificación:', error);
+    }
   }
 
   async markAsRead(id: string, userId: string) {
